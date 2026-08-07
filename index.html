@@ -138,14 +138,15 @@
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbwDqz86dcTCIPD_3zcg1H82fSJ4PPtn_IL4lKybaohJbESrSAbdBRgSKmxj2UvCM5ANEg/exec";
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
-async function initApp() {
+function initApp() {
     resetForm();
-    tampilData(); // Tampilkan data lokal dulu
-    await tarikDataDariSheets(); // Tarik & sinkronkan data dari Google Sheets
+    tampilData();
+    tarikDataDariSheets();
 }
 
-async function tarikDataDariSheets() {
-    if (!URL_GOOGLE_SHEETS || URL_GOOGLE_SHEETS.includes("URL_KAMU_DI_SINI")) return;
+// METODE JSONP (Menembus Hambatan CORS Browser)
+function tarikDataDariSheets() {
+    if (!URL_GOOGLE_SHEETS) return;
     
     const statusEl = document.getElementById('statusProses');
     if (statusEl) {
@@ -153,24 +154,36 @@ async function tarikDataDariSheets() {
         statusEl.classList.remove('hidden');
     }
 
-    try {
-        const response = await fetch(URL_GOOGLE_SHEETS);
-        const res = await response.json();
-        
-        if (res.status === 'success' && Array.isArray(res.data)) {
-            if (res.data.length > 0) {
-                simpanKeStorage(res.data);
-                tampilData();
-            }
-        }
-    } catch (err) {
-        console.warn('Gagal mengambil data dari Google Sheets, menggunakan data lokal.', err);
-    } finally {
+    // Hapus script JSONP lama jika ada
+    const scriptLama = document.getElementById('jsonpScript');
+    if (scriptLama) scriptLama.remove();
+
+    // Buat script baru untuk dipasang ke DOM
+    const script = document.createElement('script');
+    script.id = 'jsonpScript';
+    script.src = `${URL_GOOGLE_SHEETS}?callback=prosesDataDariSheets&t=${Date.now()}`;
+    script.onerror = function() {
         if (statusEl) {
-            statusEl.textContent = '✅ Data tersinkronisasi';
+            statusEl.textContent = '❌ Gagal terhubung ke Google Sheets';
             setTimeout(() => statusEl.classList.add('hidden'), 3000);
         }
+    };
+    document.body.appendChild(script);
+}
+
+// Callback otomatis saat JSONP selesai di-load
+function prosesDataDariSheets(res) {
+    const statusEl = document.getElementById('statusProses');
+    if (res && res.status === 'success' && Array.isArray(res.data)) {
+        if (res.data.length > 0) {
+            simpanKeStorage(res.data);
+            tampilData();
+        }
+        if (statusEl) statusEl.textContent = '✅ Data tersinkronisasi';
+    } else {
+        if (statusEl) statusEl.textContent = '⚠️ Data kosong / gagal dibaca';
     }
+    if (statusEl) setTimeout(() => statusEl.classList.add('hidden'), 3000);
 }
 
 function formatBiaya(input) { 
@@ -186,7 +199,7 @@ function ubahFormatTanggal(t) {
     if(!t) return '';
     if(t.includes('-')) {
         const parts = t.split('-');
-        if(parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD -> DD-MM-YYYY
+        if(parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
     return t;
 }
@@ -233,7 +246,7 @@ function simpanKeStorage(d) {
 }
 
 async function simpanKeSpreadsheet(data) {
-    if (!URL_GOOGLE_SHEETS || URL_GOOGLE_SHEETS.includes("URL_KAMU_DI_SINI")) return;
+    if (!URL_GOOGLE_SHEETS) return;
     
     const statusEl = document.getElementById('statusProses');
     if(statusEl) {
@@ -266,11 +279,12 @@ async function simpanKeSpreadsheet(data) {
             headers: {'Content-Type': 'text/plain'},
             body: JSON.stringify(kirim) 
         }); 
+        setTimeout(() => tarikDataDariSheets(), 1500);
     } catch(e) { 
         console.warn('Gagal menyimpan ke Google Sheets.', e); 
     } finally {
         if(statusEl) {
-            statusEl.textContent = '✅ Data tersinkronisasi';
+            statusEl.textContent = '✅ Tersimpan';
             setTimeout(() => statusEl.classList.add('hidden'), 3000);
         }
     }
