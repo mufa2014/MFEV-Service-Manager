@@ -153,7 +153,7 @@ async function simpanKeSpreadsheet(data) {
     try { 
         await fetch(URL_GOOGLE_SHEETS, { 
             method: 'POST', 
-            mode: 'no-cors', // Menyesuaikan CORS Apps Script
+            mode: 'no-cors',
             headers: {'Content-Type': 'text/plain'},
             body: JSON.stringify(kirim) 
         }); 
@@ -270,7 +270,7 @@ function bukaStruk(id) {
 function tutupStruk() { document.getElementById('modalStruk').style.display='none'; }
 function cetakStruk() { window.print(); }
 
-// ✅ Fungsi WhatsApp Berhasil Diperbaiki Lengkap
+// Fungsi Kirim WA yang Diperbaiki Lengkap
 async function bagikanWA() {
     if (!dataTerpilih) return alert('Data tidak ditemukan!');
     
@@ -286,4 +286,21 @@ async function bagikanWA() {
 🏍️ Merk Motor : ${dataTerpilih.merk||'-'}
 🔧 Tipe Motor : ${dataTerpilih.tipe||'-'}
 🚘 No Plat : ${dataTerpilih.plat||'-'}
-📏 Kilometer : ${dataTerpilih.
+📏 Kilometer : ${dataTerpilih.kilometer ? dataTerpilih.kilometer+' Km' : '-'}
+
+*RINCIAN PEKERJAAN:*
+${rincianTeks}
+*TOTAL BIAYA:* Rp ${dataTerpilih.total.toLocaleString('id-ID')}
+*CATATAN:* ${dataTerpilih.catatan || '-'}
+
+_Terima Kasih Telah Servis di MF.EV Service!_`;
+
+    let hp = dataTerpilih.nohp.replace(/\D/g, '');
+    if (hp.startsWith('0')) hp = '62' + hp.slice(1);
+
+    const urlWA = `https://api.whatsapp.com/send?phone=${hp}&text=${encodeURIComponent(pesan)}`;
+    window.open(urlWA, '_blank');
+}
+</script>
+</body>
+</html>
