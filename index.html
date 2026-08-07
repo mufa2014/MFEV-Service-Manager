@@ -36,17 +36,19 @@
 <body class="bg-gray-100 max-w-xl mx-auto p-3" onload="initApp()">
 
     <div class="bg-green-800 text-white text-center text-xl font-bold py-4 rounded mb-3 no-print">MF.EV Service Manager</div>
+    
     <div class="info-sinkron no-print flex items-center justify-between">
         <span>✅ Data tersimpan di HP & Google Sheets</span>
-        <span id="statusProses" class="text-xs font-semibold text-amber-700 hidden">⏳ Menyinkronkan...</span>
+        <span id="statusProses" class="text-xs font-semibold text-amber-700 hidden">⏳ Mengambil data...</span>
     </div>
 
     <div class="bg-amber-50 p-3 rounded mb-4 text-sm no-print border border-amber-200">
         <div class="font-semibold mb-2 text-amber-900">📂 Cadangan & Pemulihan Data</div>
         <div class="flex gap-2 flex-wrap">
+            <button onclick="tarikDataDariSheets()" class="bg-blue-700 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-800">🔄 Muat Ulang Sheets</button>
             <button onclick="eksporExcel()" class="bg-green-700 text-white px-3 py-1.5 rounded text-xs hover:bg-green-800">📊 Ekspor Excel (CSV)</button>
             <button onclick="eksporData()" class="bg-amber-600 text-white px-3 py-1.5 rounded text-xs hover:bg-amber-700">💾 Cadangan JSON</button>
-            <button onclick="document.getElementById('fileImpor').click()" class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-700">📂 Pulihkan Data</button>
+            <button onclick="document.getElementById('fileImpor').click()" class="bg-gray-600 text-white px-3 py-1.5 rounded text-xs hover:bg-gray-700">📂 Pulihkan Data</button>
             <input type="file" id="fileImpor" accept=".json" class="hidden" onchange="imporData(event)">
         </div>
     </div>
@@ -136,9 +138,39 @@
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbwDqz86dcTCIPD_3zcg1H82fSJ4PPtn_IL4lKybaohJbESrSAbdBRgSKmxj2UvCM5ANEg/exec";
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
-function initApp() {
+async function initApp() {
     resetForm();
-    tampilData();
+    tampilData(); // Tampilkan data lokal dulu
+    await tarikDataDariSheets(); // Tarik & sinkronkan data dari Google Sheets
+}
+
+async function tarikDataDariSheets() {
+    if (!URL_GOOGLE_SHEETS || URL_GOOGLE_SHEETS.includes("URL_KAMU_DI_SINI")) return;
+    
+    const statusEl = document.getElementById('statusProses');
+    if (statusEl) {
+        statusEl.textContent = '⏳ Mengambil data dari Google Sheets...';
+        statusEl.classList.remove('hidden');
+    }
+
+    try {
+        const response = await fetch(URL_GOOGLE_SHEETS);
+        const res = await response.json();
+        
+        if (res.status === 'success' && Array.isArray(res.data)) {
+            if (res.data.length > 0) {
+                simpanKeStorage(res.data);
+                tampilData();
+            }
+        }
+    } catch (err) {
+        console.warn('Gagal mengambil data dari Google Sheets, menggunakan data lokal.', err);
+    } finally {
+        if (statusEl) {
+            statusEl.textContent = '✅ Data tersinkronisasi';
+            setTimeout(() => statusEl.classList.add('hidden'), 3000);
+        }
+    }
 }
 
 function formatBiaya(input) { 
@@ -152,8 +184,11 @@ function ambilAngka(id) {
 
 function ubahFormatTanggal(t) { 
     if(!t) return '';
-    const [thn, bln, tgl] = t.split('-');
-    return `${tgl}-${bln}-${thn}`; 
+    if(t.includes('-')) {
+        const parts = t.split('-');
+        if(parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD -> DD-MM-YYYY
+    }
+    return t;
 }
 
 function aturSortir(k) { 
@@ -178,7 +213,6 @@ function resetForm() {
     document.querySelectorAll('input, textarea').forEach(e => {
         if(e.type !== 'button') e.value = '';
     });
-    // Set default ke tanggal hari ini
     document.getElementById('tanggal').value = new Date().toISOString().split('T')[0];
     hitungTotal(); 
 }
@@ -202,7 +236,10 @@ async function simpanKeSpreadsheet(data) {
     if (!URL_GOOGLE_SHEETS || URL_GOOGLE_SHEETS.includes("URL_KAMU_DI_SINI")) return;
     
     const statusEl = document.getElementById('statusProses');
-    if(statusEl) statusEl.classList.remove('hidden');
+    if(statusEl) {
+        statusEl.textContent = '⏳ Menyimpan ke Google Sheets...';
+        statusEl.classList.remove('hidden');
+    }
 
     const rincian = data.daftarPekerjaan
         .map(p => p.nama ? `${p.nama}: Rp ${p.biaya.toLocaleString('id-ID')}` : '')
@@ -230,9 +267,12 @@ async function simpanKeSpreadsheet(data) {
             body: JSON.stringify(kirim) 
         }); 
     } catch(e) { 
-        console.warn('Simpan offline (perangkat saja).', e); 
+        console.warn('Gagal menyimpan ke Google Sheets.', e); 
     } finally {
-        if(statusEl) statusEl.classList.add('hidden');
+        if(statusEl) {
+            statusEl.textContent = '✅ Data tersinkronisasi';
+            setTimeout(() => statusEl.classList.add('hidden'), 3000);
+        }
     }
 }
 
@@ -318,7 +358,7 @@ function tampilData() {
             <td class="p-2"><strong>${i.nama}</strong><br><span class="text-gray-500">${i.nohp}</span></td>
             <td class="p-2">${i.merk || '-'}<br><span class="text-gray-500">${i.tipe || '-'}</span></td>
             <td class="p-2">${i.plat || '-'}<br><span class="text-gray-500">${i.kilometer ? i.kilometer + ' Km' : '-'}</span></td>
-            <td class="p-2 text-right font-semibold text-green-700 whitespace-nowrap">Rp ${i.total.toLocaleString('id-ID')}</td>
+            <td class="p-2 text-right font-semibold text-green-700 whitespace-nowrap">Rp ${(i.total || 0).toLocaleString('id-ID')}</td>
             <td class="p-2 text-center whitespace-nowrap">
                 <button onclick="bukaStruk(${i.id})" class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Struk</button>
                 <button onclick="bukaEdit(${i.id})" class="bg-amber-500 text-white px-2 py-1 rounded text-xs ml-1">Edit</button>
@@ -333,7 +373,7 @@ function eksporExcel() {
     let csv = "\uFEFFTanggal,Nama,No HP,Merk Motor,Tipe Motor,No Plat,Kilometer,Rincian,Total,Catatan\n";
     
     d.forEach(i => {
-        let r = i.daftarPekerjaan.map(p => p.nama ? `${p.nama} (Rp ${p.biaya})` : '').filter(Boolean).join('; ');
+        let r = i.daftarPekerjaan ? i.daftarPekerjaan.map(p => p.nama ? `${p.nama} (Rp ${p.biaya})` : '').filter(Boolean).join('; ') : '';
         csv += `"${ubahFormatTanggal(i.tgl)}","${i.nama}","${i.nohp}","${i.merk}","${i.tipe}","${i.plat}","${i.kilometer||'-'}","${r}","${i.total}","${i.catatan||'-'}"\n`;
     });
 
@@ -381,7 +421,7 @@ function imporData(e) {
 }
 
 function bukaEdit(id) { 
-    const d = ambilData().find(x => x.id === id); 
+    const d = ambilData().find(x => x.id == id); 
     if(!d) return alert('Data tidak ditemukan!');
     
     document.getElementById('editId').value = id; 
@@ -396,8 +436,8 @@ function bukaEdit(id) {
     document.getElementById('catatan').value = d.catatan || '';
 
     for(let i = 1; i <= 5; i++){
-        const x = d.daftarPekerjaan[i-1] || {nama: '', biaya: 0};
-        document.getElementById(`kerja${i}`).value = x.nama;
+        const x = (d.daftarPekerjaan && d.daftarPekerjaan[i-1]) ? d.daftarPekerjaan[i-1] : {nama: '', biaya: 0};
+        document.getElementById(`kerja${i}`).value = x.nama || '';
         document.getElementById(`biaya${i}`).value = x.biaya > 0 ? x.biaya.toLocaleString('id-ID') : '';
     }
     
@@ -406,22 +446,24 @@ function bukaEdit(id) {
 }
 
 function hapusData(id) { 
-    if(confirm('Yakin ingin menghapus data ini?')){
-        simpanKeStorage(ambilData().filter(x => x.id !== id)); 
+    if(confirm('Yakin ingin menghapus data ini dari penyimpanan lokal?')){
+        simpanKeStorage(ambilData().filter(x => x.id != id)); 
         tampilData();
     } 
 }
 
 function bukaStruk(id) { 
-    dataTerpilih = ambilData().find(x => x.id === id); 
+    dataTerpilih = ambilData().find(x => x.id == id); 
     if(!dataTerpilih) return;
     
     let r = '';
-    dataTerpilih.daftarPekerjaan.forEach(p => {
-        if(p.nama) {
-            r += `<div class="baris"><span>${p.nama}</span><span class="kanan">Rp ${p.biaya.toLocaleString('id-ID')}</span></div>`;
-        }
-    });
+    if (dataTerpilih.daftarPekerjaan && Array.isArray(dataTerpilih.daftarPekerjaan)) {
+        dataTerpilih.daftarPekerjaan.forEach(p => {
+            if(p.nama) {
+                r += `<div class="baris"><span>${p.nama}</span><span class="kanan">Rp ${(p.biaya || 0).toLocaleString('id-ID')}</span></div>`;
+            }
+        });
+    }
 
     document.getElementById('areaCetak').innerHTML = `
         <div class="struk">
@@ -438,7 +480,7 @@ function bukaStruk(id) {
             <div class="tebal">RINCIAN PEKERJAAN:</div>
             ${r}
             <div class="garis"></div>
-            <div class="baris tebal" style="font-size:12px;"><span>TOTAL BIAYA</span><span class="kanan">Rp ${dataTerpilih.total.toLocaleString('id-ID')}</span></div>
+            <div class="baris tebal" style="font-size:12px;"><span>TOTAL BIAYA</span><span class="kanan">Rp ${(dataTerpilih.total || 0).toLocaleString('id-ID')}</span></div>
             <div class="garis"></div>
             ${dataTerpilih.catatan ? `<div class="tebal">CATATAN:</div><div>${dataTerpilih.catatan}</div><div class="garis"></div>` : ''}
             <div class="tengah">Terima Kasih</div>
@@ -460,9 +502,11 @@ function bagikanWA() {
     if (!dataTerpilih) return alert('Data tidak ditemukan!');
     
     let rincianTeks = '';
-    dataTerpilih.daftarPekerjaan.forEach(p => {
-        if(p.nama) rincianTeks += `• ${p.nama} : Rp ${p.biaya.toLocaleString('id-ID')}\n`;
-    });
+    if (dataTerpilih.daftarPekerjaan && Array.isArray(dataTerpilih.daftarPekerjaan)) {
+        dataTerpilih.daftarPekerjaan.forEach(p => {
+            if(p.nama) rincianTeks += `• ${p.nama} : Rp ${(p.biaya || 0).toLocaleString('id-ID')}\n`;
+        });
+    }
 
     const pesan = `*STRUK SERVIS MF.EV SERVICE*
 📅 Tanggal : ${ubahFormatTanggal(dataTerpilih.tgl)}
@@ -474,12 +518,12 @@ function bagikanWA() {
 
 *RINCIAN PEKERJAAN:*
 ${rincianTeks}
-*TOTAL BIAYA:* Rp ${dataTerpilih.total.toLocaleString('id-ID')}
+*TOTAL BIAYA:* Rp ${(dataTerpilih.total || 0).toLocaleString('id-ID')}
 *CATATAN:* ${dataTerpilih.catatan || '-'}
 
 _Terima Kasih Telah Servis di MF.EV Service!_`;
 
-    let hp = dataTerpilih.nohp.replace(/\D/g, '');
+    let hp = String(dataTerpilih.nohp).replace(/\D/g, '');
     if (hp.startsWith('0')) hp = '62' + hp.slice(1);
 
     const urlWA = `https://api.whatsapp.com/send?phone=${hp}&text=${encodeURIComponent(pesan)}`;
