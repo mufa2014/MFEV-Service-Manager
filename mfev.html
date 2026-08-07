@@ -34,7 +34,7 @@
         .info-sinkron { font-size: 12px; color: #166534; background: #dcfce7; padding: 4px 8px; border-radius: 4px; margin-bottom: 8px; }
     </style>
 </head>
-<body class="bg-gray-100 max-w-xl mx-auto p-3">
+<body class="bg-gray-100 max-w-xl mx-auto p-3" onload="tampilData()">
 
     <div class="bg-green-800 text-white text-center text-xl font-bold py-4 rounded mb-4 no-print">MF.EV Service Manager</div>
     <div class="info-sinkron no-print">✅ Data tersimpan di HP & Google Sheets secara bersamaan</div>
@@ -104,7 +104,6 @@
     </div>
 
 <script>
-// ✅ LINK API KAMU SUDAH DIMASUKKAN
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbwDqz86dcTCIPD_3zcg1H82fSJ4PPtn_IL4lKybaohJbESrSAbdBRgSKmxj2UvCM5ANEg/exec";
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
@@ -115,13 +114,11 @@ function aturSortir(k) { kolomSortir===k ? urutanNaik=!urutanNaik : (kolomSortir
 function hitungTotal() { let t=0; for(let i=1;i<=5;i++) t+=ambilAngka(`biaya${i}`); document.getElementById('totalLangsung').textContent = `Rp ${t.toLocaleString('id-ID')}`; }
 function resetForm() { document.getElementById('editId').value=''; document.getElementById('judulForm').textContent='Tambah Riwayat Servis'; document.querySelectorAll('input,textarea').forEach(e=>e.value=''); hitungTotal(); }
 
-// ✅ Fungsi baca data diperbaiki agar kompatibel dengan versi lama
 function ambilData() { 
     try {
         const d = localStorage.getItem('riwayatServis');
         if (!d) return [];
         const daftar = JSON.parse(d);
-        // Sesuaikan format data lama agar terbaca
         return daftar.map(i => {
             if (!i.merk && i.motor) {
                 const b = String(i.motor || '').split(' - ');
@@ -139,69 +136,154 @@ function ambilData() {
 function simpanKeStorage(d) { localStorage.setItem('riwayatServis', JSON.stringify(d)); }
 
 async function simpanKeSpreadsheet(data) {
-    if (!URL_GOOGLE_SHEETS || URL_GOOGLE_SHEETS === "URL_KAMU_DI_SINI") return;
+    if (!URL_GOOGLE_SHEETS || URL_GOOGLE_SHEETS.includes("URL_KAMU_DI_SINI")) return;
     const rincian = data.daftarPekerjaan.map(p => p.nama ? `${p.nama}: Rp ${p.biaya.toLocaleString('id-ID')}` : '').filter(x=>x).join(' | ');
-    const kirim = { tanggal:ubahFormatTanggal(data.tgl), nama:data.nama, nohp:data.nohp, merk:data.merk, tipe:data.tipe, plat:data.plat, kilometer:data.kilometer?data.kilometer+' Km':'-', rincian:rincian, total:'Rp '+data.total.toLocaleString('id-ID'), catatan:data.catatan||'-' };
-    try { await fetch(URL_GOOGLE_SHEETS, { method:'POST', body:JSON.stringify(kirim), headers: {'Content-Type': 'application/json'} }); }
-    catch(e) { console.warn('Tidak terhubung ke internet, data tersimpan di perangkat saja'); }
+    const kirim = { 
+        tanggal: ubahFormatTanggal(data.tgl), 
+        nama: data.nama, 
+        nohp: data.nohp, 
+        merk: data.merk, 
+        tipe: data.tipe, 
+        plat: data.plat, 
+        kilometer: data.kilometer ? data.kilometer+' Km' : '-', 
+        rincian: rincian, 
+        total: 'Rp ' + data.total.toLocaleString('id-ID'), 
+        catatan: data.catatan || '-' 
+    };
+    try { 
+        await fetch(URL_GOOGLE_SHEETS, { 
+            method: 'POST', 
+            mode: 'no-cors', // Menyesuaikan CORS Apps Script
+            headers: {'Content-Type': 'text/plain'},
+            body: JSON.stringify(kirim) 
+        }); 
+    } catch(e) { 
+        console.warn('Tidak terhubung ke internet, data tersimpan di perangkat saja', e); 
+    }
 }
 
 function simpanData() {
-    const editId = document.getElementById('editId').value, tanggal = document.getElementById('tanggal').value, nama = document.getElementById('nama').value.trim(), nohp = document.getElementById('nohp').value.trim(), merk = document.getElementById('merk').value.trim(), tipe = document.getElementById('tipe').value.trim(), plat = document.getElementById('plat').value.trim(), kilometer = document.getElementById('kilometer').value.trim(), catatan = document.getElementById('catatan').value.trim();
+    const editId = document.getElementById('editId').value, 
+          tanggal = document.getElementById('tanggal').value, 
+          nama = document.getElementById('nama').value.trim(), 
+          nohp = document.getElementById('nohp').value.trim(), 
+          merk = document.getElementById('merk').value.trim(), 
+          tipe = document.getElementById('tipe').value.trim(), 
+          plat = document.getElementById('plat').value.trim(), 
+          kilometer = document.getElementById('kilometer').value.trim(), 
+          catatan = document.getElementById('catatan').value.trim();
+
     if (!tanggal || !nama || !nohp || !merk || !plat) return alert('Lengkapi Tanggal, Nama, No HP, Merk Motor, dan No Plat!');
-    const pekerjaan = []; for(let i=1;i<=5;i++){const n=document.getElementById(`kerja${i}`).value.trim(),b=ambilAngka(`biaya${i}`);if(n||b>0) pekerjaan.push({nama:n,biaya:b});}
+    
+    const pekerjaan = []; 
+    for(let i=1;i<=5;i++){
+        const n=document.getElementById(`kerja${i}`).value.trim(), b=ambilAngka(`biaya${i}`);
+        if(n||b>0) pekerjaan.push({nama:n, biaya:b});
+    }
     if(pekerjaan.length===0) return alert('Isi minimal satu pekerjaan dan biayanya!');
+    
     const total = pekerjaan.reduce((s,i)=>s+i.biaya,0), daftar = ambilData();
-    if(editId){const i=daftar.findIndex(x=>x.id==editId);if(i>-1){daftar[i]={...daftar[i],tgl:tanggal,nama,nohp,merk,tipe,plat,kilometer,daftarPekerjaan:pekerjaan,total,catatan};alert('✅ Data diperbarui');}}
-    else{const baru={id:Date.now(),tgl:tanggal,nama,nohp,merk,tipe,plat,kilometer,daftarPekerjaan:pekerjaan,total,catatan};daftar.unshift(baru);alert('✅ Tersimpan & disinkronkan ke Google Sheets');simpanKeSpreadsheet(baru);}
+    
+    if(editId){
+        const i=daftar.findIndex(x=>x.id==editId);
+        if(i>-1){
+            daftar[i]={...daftar[i], tgl:tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan:pekerjaan, total, catatan};
+            alert('✅ Data diperbarui');
+        }
+    } else {
+        const baru={id:Date.now(), tgl:tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan:pekerjaan, total, catatan};
+        daftar.unshift(baru);
+        alert('✅ Tersimpan & disinkronkan ke Google Sheets');
+        simpanKeSpreadsheet(baru);
+    }
     simpanKeStorage(daftar); resetForm(); tampilData();
 }
 
-// ✅ Fungsi tampil data diperbaiki agar pasti berjalan
 function tampilData() {
     const k = document.getElementById('kataKunci').value.toLowerCase(), daftar = ambilData(), tbody = document.getElementById('daftarRiwayat');
     let hasil = daftar.filter(i=>i.nama.toLowerCase().includes(k)||(i.merk||'').toLowerCase().includes(k)||(i.tipe||'').toLowerCase().includes(k)||(i.plat||'').toLowerCase().includes(k)||i.nohp.includes(k));
-    hasil.sort((a,b)=>{let na,nb;switch(kolomSortir){case'tgl':na=a.tgl;nb=b.tgl;break;case'nama':na=a.nama.toLowerCase();nb=b.nama.toLowerCase();break;case'merk':na=(a.merk||'').toLowerCase();nb=(b.merk||'').toLowerCase();break;case'tipe':na=(a.tipe||'').toLowerCase();nb=(b.tipe||'').toLowerCase();break;case'total':na=a.total||0;nb=b.total||0;break;default:na=a.tgl;nb=b.tgl;}return na<nb?(urutanNaik?-1:1):na>nb?(urutanNaik?1:-1):0;});
-    document.querySelectorAll('.btn-sortir').forEach(b=>b.classList.remove('aktif')); document.querySelector('.btn-sortir[onclick*="'+kolomSortir+'"]')?.classList.add('aktif');
-    tbody.innerHTML = hasil.length?hasil.map(i=>`<tr class="border-b border-gray-100"><td class="p-2 text-center">${ubahFormatTanggal(i.tgl)}</td><td class="p-2">${i.nama}<br><small class="text-gray-500">${i.nohp}</small></td><td class="p-2">${i.merk||'-'}<br><small class="text-gray-500">${i.tipe||'-'}</small></td><td class="p-2">${i.plat||'-'}<br><small class="text-gray-500">${i.kilometer?i.kilometer+' Km':'-'}</small></td><td class="p-2 text-right font-medium">Rp ${i.total.toLocaleString('id-ID')}</td><td class="p-2 text-center whitespace-nowrap"><button onclick="bukaStruk(${i.id})" class="bg-blue-500 text-white text-xs px-2 py-1 rounded mb-1">Struk</button><button onclick="bukaEdit(${i.id})" class="bg-amber-500 text-white text-xs px-2 py-1 rounded mb-1 ml-1">Edit</button><button onclick="hapusData(${i.id})" class="bg-red-500 text-white text-xs px-2 py-1 rounded ml-1">Hapus</button></td></tr>`).join(''):`<tr><td colspan="6" class="p-4 text-center text-gray-500">Belum ada data</td>`;
+    
+    hasil.sort((a,b)=>{
+        let na,nb;
+        switch(kolomSortir){
+            case'tgl':na=a.tgl;nb=b.tgl;break;
+            case'nama':na=a.nama.toLowerCase();nb=b.nama.toLowerCase();break;
+            case'merk':na=(a.merk||'').toLowerCase();nb=(b.merk||'').toLowerCase();break;
+            case'tipe':na=(a.tipe||'').toLowerCase();nb=(b.tipe||'').toLowerCase();break;
+            case'total':na=a.total||0;nb=b.total||0;break;
+            default:na=a.tgl;nb=b.tgl;
+        }
+        return na<nb?(urutanNaik?-1:1):na>nb?(urutanNaik?1:-1):0;
+    });
+
+    document.querySelectorAll('.btn-sortir').forEach(b=>b.classList.remove('aktif')); 
+    document.querySelector('.btn-sortir[onclick*="'+kolomSortir+'"]')?.classList.add('aktif');
+    
+    tbody.innerHTML = hasil.length ? hasil.map(i=>`<tr class="border-b border-gray-100"><td class="p-2 text-center">${ubahFormatTanggal(i.tgl)}</td><td class="p-2">${i.nama}<br><small class="text-gray-500">${i.nohp}</small></td><td class="p-2">${i.merk||'-'}<br><small class="text-gray-500">${i.tipe||'-'}</small></td><td class="p-2">${i.plat||'-'}<br><small class="text-gray-500">${i.kilometer?i.kilometer+' Km':'-'}</small></td><td class="p-2 text-right font-medium">Rp ${i.total.toLocaleString('id-ID')}</td><td class="p-2 text-center whitespace-nowrap"><button onclick="bukaStruk(${i.id})" class="bg-blue-500 text-white text-xs px-2 py-1 rounded mb-1">Struk</button><button onclick="bukaEdit(${i.id})" class="bg-amber-500 text-white text-xs px-2 py-1 rounded mb-1 ml-1">Edit</button><button onclick="hapusData(${i.id})" class="bg-red-500 text-white text-xs px-2 py-1 rounded ml-1">Hapus</button></td></tr>`).join('') : `<tr><td colspan="6" class="p-4 text-center text-gray-500">Belum ada data</td></tr>`;
 }
-function eksporExcel() { const d=ambilData(),b="\uFEFFTanggal,Nama,No HP,Merk Motor,Tipe Motor,No Plat,Kilometer,Rincian,Total,Catatan\n"+d.map(i=>{let r='';i.daftarPekerjaan.forEach(p=>{if(p.nama)r+=`• ${p.nama}:Rp ${p.biaya}\n`;});return `"${ubahFormatTanggal(i.tgl)}","${i.nama}","${i.nohp}","${i.merk}","${i.tipe}","${i.plat}","${i.kilometer||'-'}","${r.trim()}","${i.total}","${i.catatan||'-'}"`;}).join('\n');const blob=new Blob([b],{type:'text/csv;charset=utf-8'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=`Laporan-Servis-${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.csv`;a.click();URL.revokeObjectURL(u); }
-function eksporData() { const d=ambilData(),b=new Blob([JSON.stringify(d,null,2)]);const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`Cadangan-Servis-${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.json`;a.click();URL.revokeObjectURL(u); }
-function imporData(e) { if(!e.target.files[0]||!confirm('Ganti data lama?'))return;const r=new FileReader();r.onload=ev=>{try{simpanKeStorage(JSON.parse(ev.target.result));tampilData();alert('✅ Dipulihkan');}catch{alert('❌ File tidak valid');}};r.readAsText(e.target.files[0]); }
-function bukaEdit(id) { const d=ambilData().find(x=>x.id===id);if(!d)return alert('Tidak ditemukan');document.getElementById('editId').value=id;document.getElementById('judulForm').textContent='Edit Riwayat Servis';document.getElementById('tanggal').value=d.tgl;document.getElementById('nama').value=d.nama;document.getElementById('nohp').value=d.nohp;document.getElementById('merk').value=d.merk||'';document.getElementById('tipe').value=d.tipe||'';document.getElementById('plat').value=d.plat||'';document.getElementById('kilometer').value=d.kilometer||'';document.getElementById('catatan').value=d.catatan||'';for(let i=1;i<=5;i++){const x=d.daftarPekerjaan[i-1]||{nama:'',biaya:0};document.getElementById(`kerja${i}`).value=x.nama;document.getElementById(`biaya${i}`).value=x.biaya>0?x.biaya.toLocaleString('id-ID'):'';}hitungTotal();window.scrollTo({top:0}); }
-function hapusData(id) { if(confirm('Yakin hapus?')){simpanKeStorage(ambilData().filter(x=>x.id!==id));tampilData();} }
-function bukaStruk(id) { dataTerpilih=ambilData().find(x=>x.id===id);if(!dataTerpilih)return;let r='';dataTerpilih.daftarPekerjaan.forEach(p=>r+=`<div class="baris"><span>${p.nama||'-'}</span><span class="kanan">Rp ${p.biaya.toLocaleString('id-ID')}</span></div>`);document.getElementById('areaCetak').innerHTML=`<div class="struk"><div class="judul-toko">MF.EV SERVICE</div><div class="sub-judul">Pangkalpinang, Bangka Belitung</div><div class="garis"></div><div class="baris-struk"><span class="label-struk">Tanggal</span><span>: ${ubahFormatTanggal(dataTerpilih.tgl)}</span></div><div class="garis"></div><div class="baris-struk"><span class="label-struk">Pelanggan</span><span>: ${dataTerpilih.nama}</span></div><div class="baris-struk"><span class="label-struk">No HP</span><span>: ${dataTerpilih.nohp}</span></div><div class="baris-struk"><span class="label-struk">Merk Motor</span><span>: ${dataTerpilih.merk||'-'}</span></div><div class="baris-struk"><span class="label-struk">Tipe Motor</span><span>: ${dataTerpilih.tipe||'-'}</span></div><div class="baris-struk"><span class="label-struk">No Plat</span><span>: ${dataTerpilih.plat||'-'}</span></div><div class="baris-struk"><span class="label-struk">Km Saat Ini</span><span>: ${dataTerpilih.kilometer?dataTerpilih.kilometer+' Km':'-'}</span></div><div class="garis"></div><div class="tebal">RINCIAN PEKERJAAN:</div>${r}<div class="garis"></div><div class="baris tebal" style="font-size:13px;"><span>TOTAL BAYAR</span><span class="kanan">Rp ${dataTerpilih.total.toLocaleString('id-ID')}</span></div><div class="garis"></div><div class="tebal">CATATAN:</div><div>${dataTerpilih.catatan||'-'}</div><div class="garis"></div><div class="tengah">Terima Kasih</div><div class="tengah">Semoga Motor Anda Awet :-)</div></div>`;document.getElementById('modalStruk').style.display='block'; }
+
+function eksporExcel() { 
+    const d=ambilData(), b="\uFEFFTanggal,Nama,No HP,Merk Motor,Tipe Motor,No Plat,Kilometer,Rincian,Total,Catatan\n"+d.map(i=>{let r='';i.daftarPekerjaan.forEach(p=>{if(p.nama)r+=`• ${p.nama}:Rp ${p.biaya}\n`;});return `"${ubahFormatTanggal(i.tgl)}","${i.nama}","${i.nohp}","${i.merk}","${i.tipe}","${i.plat}","${i.kilometer||'-'}","${r.trim()}","${i.total}","${i.catatan||'-'}"`;}).join('\n');
+    const blob=new Blob([b],{type:'text/csv;charset=utf-8'});
+    const u=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=u; a.download=`Laporan-Servis-${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.csv`; a.click(); URL.revokeObjectURL(u); 
+}
+
+function eksporData() { 
+    const d=ambilData(), b=new Blob([JSON.stringify(d,null,2)]);
+    const u=URL.createObjectURL(b);
+    const a=document.createElement('a'); a.href=u; a.download=`Cadangan-Servis-${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.json`; a.click(); URL.revokeObjectURL(u); 
+}
+
+function imporData(e) { 
+    if(!e.target.files[0]||!confirm('Ganti data lama?'))return;
+    const r=new FileReader();
+    r.onload=ev=>{try{simpanKeStorage(JSON.parse(ev.target.result)); tampilData(); alert('✅ Dipulihkan');}catch{alert('❌ File tidak valid');}};
+    r.readAsText(e.target.files[0]); 
+}
+
+function bukaEdit(id) { 
+    const d=ambilData().find(x=>x.id===id); if(!d)return alert('Tidak ditemukan');
+    document.getElementById('editId').value=id; document.getElementById('judulForm').textContent='Edit Riwayat Servis';
+    document.getElementById('tanggal').value=d.tgl; document.getElementById('nama').value=d.nama;
+    document.getElementById('nohp').value=d.nohp; document.getElementById('merk').value=d.merk||'';
+    document.getElementById('tipe').value=d.tipe||''; document.getElementById('plat').value=d.plat||'';
+    document.getElementById('kilometer').value=d.kilometer||''; document.getElementById('catatan').value=d.catatan||'';
+    for(let i=1;i<=5;i++){
+        const x=d.daftarPekerjaan[i-1]||{nama:'',biaya:0};
+        document.getElementById(`kerja${i}`).value=x.nama;
+        document.getElementById(`biaya${i}`).value=x.biaya>0?x.biaya.toLocaleString('id-ID'):'';
+    }
+    hitungTotal(); window.scrollTo({top:0}); 
+}
+
+function hapusData(id) { if(confirm('Yakin hapus?')){simpanKeStorage(ambilData().filter(x=>x.id!==id)); tampilData();} }
+
+function bukaStruk(id) { 
+    dataTerpilih=ambilData().find(x=>x.id===id); if(!dataTerpilih)return;
+    let r='';
+    dataTerpilih.daftarPekerjaan.forEach(p=>r+=`<div class="baris"><span>${p.nama||'-'}</span><span class="kanan">Rp ${p.biaya.toLocaleString('id-ID')}</span></div>`);
+    document.getElementById('areaCetak').innerHTML=`<div class="struk"><div class="judul-toko">MF.EV SERVICE</div><div class="sub-judul">Pangkalpinang, Bangka Belitung</div><div class="garis"></div><div class="baris-struk"><span class="label-struk">Tanggal</span><span>: ${ubahFormatTanggal(dataTerpilih.tgl)}</span></div><div class="garis"></div><div class="baris-struk"><span class="label-struk">Pelanggan</span><span>: ${dataTerpilih.nama}</span></div><div class="baris-struk"><span class="label-struk">No HP</span><span>: ${dataTerpilih.nohp}</span></div><div class="baris-struk"><span class="label-struk">Merk Motor</span><span>: ${dataTerpilih.merk||'-'}</span></div><div class="baris-struk"><span class="label-struk">Tipe Motor</span><span>: ${dataTerpilih.tipe||'-'}</span></div><div class="baris-struk"><span class="label-struk">No Plat</span><span>: ${dataTerpilih.plat||'-'}</span></div><div class="baris-struk"><span class="label-struk">Km Saat Ini</span><span>: ${dataTerpilih.kilometer?dataTerpilih.kilometer+' Km':'-'}</span></div><div class="garis"></div><div class="tebal">RINCIAN PEKERJAAN:</div>${r}<div class="garis"></div><div class="baris tebal" style="font-size:13px;"><span>TOTAL BAYAR</span><span class="kanan">Rp ${dataTerpilih.total.toLocaleString('id-ID')}</span></div><div class="garis"></div><div class="tebal">CATATAN:</div><div>${dataTerpilih.catatan||'-'}</div><div class="garis"></div><div class="tengah">Terima Kasih</div><div class="tengah">Semoga Motor Anda Awet :-)</div></div>`;
+    document.getElementById('modalStruk').style.display='block'; 
+}
+
 function tutupStruk() { document.getElementById('modalStruk').style.display='none'; }
 function cetakStruk() { window.print(); }
 
+// ✅ Fungsi WhatsApp Berhasil Diperbaiki Lengkap
 async function bagikanWA() {
     if (!dataTerpilih) return alert('Data tidak ditemukan!');
-    const area = document.getElementById('areaCetak');
-    try {
-        const canvas = await html2canvas(area, { scale: 2, useCORS: true, width: 227, windowWidth: 227 });
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1));
-        const file = new File([blob], 'Struk-Servis-MFEV.png', { type: 'image/png' });
+    
+    let rincianTeks = '';
+    dataTerpilih.daftarPekerjaan.forEach(p => {
+        if(p.nama) rincianTeks += `• ${p.nama} : Rp ${p.biaya.toLocaleString('id-ID')}\n`;
+    });
 
-        let rincianTeks = '';
-        dataTerpilih.daftarPekerjaan.forEach(p => {
-            rincianTeks += `• ${p.nama || '-'} : Rp ${p.biaya.toLocaleString('id-ID')}\n`;
-        });
-
-        const pesan = `*STRUK SERVIS MF.EV SERVICE*
+    const pesan = `*STRUK SERVIS MF.EV SERVICE*
 📅 Tanggal : ${ubahFormatTanggal(dataTerpilih.tgl)}
 👤 Pelanggan : ${dataTerpilih.nama}
 📞 No HP : ${dataTerpilih.nohp}
 🏍️ Merk Motor : ${dataTerpilih.merk||'-'}
 🔧 Tipe Motor : ${dataTerpilih.tipe||'-'}
 🚘 No Plat : ${dataTerpilih.plat||'-'}
-📏 Kilometer : ${dataTerpilih.kilometer ? dataTerpilih.kilometer+' Km' : '-'}
-📝 RINCIAN PEKERJAAN:
-${rincianTeks}
-💰 TOTAL BAYAR : Rp ${dataTerpilih.total.toLocaleString('id-ID')}
-📄 CATATAN : ${dataTerpilih.catatan||'-'}
-
-Terima Kasih
-Semoga Motor Anda Awet :-)`;
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await 
+📏 Kilometer : ${dataTerpilih.
