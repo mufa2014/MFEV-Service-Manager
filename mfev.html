@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MF.EV Service Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         @page { size: 58mm auto; margin: 0; }
         @media print {
@@ -14,82 +13,109 @@
             #areaCetak { width: 58mm !important; margin: 0 auto; padding: 0; }
             .no-print { display: none !important; }
         }
-        .struk { width: 58mm !important; max-width: 58mm !important; box-sizing: border-box; font-family: 'Courier New', Courier, monospace; font-size: 11px; line-height: 1.5; background: white; padding: 8px 5px; overflow: hidden; }
-        .judul-toko { font-size: 22px; font-weight: 900; text-align: center; margin-bottom: 2px; letter-spacing: 1px; }
-        .sub-judul { font-size: 11px; text-align: center; margin-bottom: 6px; }
+        .struk { width: 58mm !important; max-width: 58mm !important; box-sizing: border-box; font-family: 'Courier New', Courier, monospace; font-size: 11px; line-height: 1.4; background: white; padding: 8px 5px; overflow: hidden; }
+        .judul-toko { font-size: 18px; font-weight: 900; text-align: center; margin-bottom: 2px; letter-spacing: 1px; }
+        .sub-judul { font-size: 10px; text-align: center; margin-bottom: 6px; }
         .garis { border-bottom: 1px dashed #000; margin: 5px 0; }
         .kanan { text-align: right; }
         .tengah { text-align: center; }
         .tebal { font-weight: bold; }
-        .baris { display: flex; justify-content: space-between; margin: 2px 0; gap: 4px; }
+        .baris { display: flex; justify-content: space-between; margin: 2px 0; gap: 4px; word-break: break-word; }
         .baris-struk { display: flex; margin: 2px 0; }
-        .label-struk { width: 105px; flex-shrink: 0; }
+        .label-struk { width: 90px; flex-shrink: 0; }
         .nilai-struk { flex: 1; padding-left: 2px; }
-        .btn-sortir { font-size: 11px; padding: 2px 4px; border-radius: 4px; border: 1px solid #ccc; background: #f9f9f9; cursor: pointer; transition: all 0.2s; }
-        .btn-sortir.aktif { background: #2563eb; color: white; border-color: #2563eb; }
+        .btn-sortir { font-size: 11px; padding: 2px 6px; border-radius: 4px; border: 1px solid #ccc; background: #f9f9f9; cursor: pointer; transition: all 0.2s; }
+        .btn-sortir.aktif { background: #166534; color: white; border-color: #166534; }
         .input-biaya { text-align: right; font-variant-numeric: tabular-nums; }
         #modalStruk { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; overflow-y: auto; padding: 20px 10px; }
         .isi-modal { background: white; max-width: 320px; margin: 0 auto; padding: 15px; border-radius: 8px; }
         .input-kerja { flex: 2; }
-        .info-sinkron { font-size: 12px; color: #166534; background: #dcfce7; padding: 4px 8px; border-radius: 4px; margin-bottom: 8px; }
+        .info-sinkron { font-size: 12px; color: #166534; background: #dcfce7; padding: 6px 12px; border-radius: 4px; margin-bottom: 12px; }
     </style>
 </head>
-<body class="bg-gray-100 max-w-xl mx-auto p-3" onload="tampilData()">
+<body class="bg-gray-100 max-w-xl mx-auto p-3" onload="initApp()">
 
-    <div class="bg-green-800 text-white text-center text-xl font-bold py-4 rounded mb-4 no-print">MF.EV Service Manager</div>
-    <div class="info-sinkron no-print">✅ Data tersimpan di HP & Google Sheets secara bersamaan</div>
+    <div class="bg-green-800 text-white text-center text-xl font-bold py-4 rounded mb-3 no-print">MF.EV Service Manager</div>
+    <div class="info-sinkron no-print flex items-center justify-between">
+        <span>✅ Data tersimpan di HP & Google Sheets</span>
+        <span id="statusProses" class="text-xs font-semibold text-amber-700 hidden">⏳ Menyinkronkan...</span>
+    </div>
 
-    <div class="bg-amber-50 p-3 rounded mb-4 text-sm no-print">
-        <div class="font-semibold mb-2">📂 Cadangan Data</div>
+    <div class="bg-amber-50 p-3 rounded mb-4 text-sm no-print border border-amber-200">
+        <div class="font-semibold mb-2 text-amber-900">📂 Cadangan & Pemulihan Data</div>
         <div class="flex gap-2 flex-wrap">
-            <button onclick="eksporExcel()" class="bg-green-700 text-white px-3 py-1 rounded text-xs">📊 Ekspor Excel</button>
-            <button onclick="eksporData()" class="bg-amber-600 text-white px-3 py-1 rounded text-xs">💾 Cadangan Saja</button>
-            <button onclick="document.getElementById('fileImpor').click()" class="bg-blue-600 text-white px-3 py-1 rounded text-xs">📂 Pulihkan Data</button>
+            <button onclick="eksporExcel()" class="bg-green-700 text-white px-3 py-1.5 rounded text-xs hover:bg-green-800">📊 Ekspor Excel (CSV)</button>
+            <button onclick="eksporData()" class="bg-amber-600 text-white px-3 py-1.5 rounded text-xs hover:bg-amber-700">💾 Cadangan JSON</button>
+            <button onclick="document.getElementById('fileImpor').click()" class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-700">📂 Pulihkan Data</button>
             <input type="file" id="fileImpor" accept=".json" class="hidden" onchange="imporData(event)">
         </div>
     </div>
 
-    <div class="bg-white p-5 rounded shadow mb-4 no-print">
-        <h3 class="text-lg font-semibold mb-4" id="judulForm">Tambah Riwayat Servis</h3>
+    <div class="bg-white p-4 rounded shadow mb-4 no-print">
+        <h3 class="text-lg font-semibold mb-3 text-gray-800" id="judulForm">Tambah Riwayat Servis</h3>
         <div class="space-y-3">
             <input type="hidden" id="editId">
-            <input type="date" id="tanggal" class="w-full p-2 border rounded">
-            <input type="text" id="nama" placeholder="Nama Pelanggan" class="w-full p-2 border rounded">
-            <input type="text" id="nohp" placeholder="No HP" class="w-full p-2 border rounded">
-            <input type="text" id="merk" placeholder="Merk Motor" class="w-full p-2 border rounded">
-            <input type="text" id="tipe" placeholder="Tipe Motor" class="w-full p-2 border rounded">
-            <input type="text" id="plat" placeholder="Nomor Plat" class="w-full p-2 border rounded">
-            <input type="number" id="kilometer" placeholder="Kilometer Motor" min="0" class="w-full p-2 border rounded">
+            <div>
+                <label class="text-xs font-semibold text-gray-600">Tanggal Servis</label>
+                <input type="date" id="tanggal" class="w-full p-2 border rounded text-sm mt-1">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <input type="text" id="nama" placeholder="Nama Pelanggan *" class="w-full p-2 border rounded text-sm">
+                <input type="text" id="nohp" placeholder="No HP/WA *" class="w-full p-2 border rounded text-sm">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <input type="text" id="merk" placeholder="Merk Motor *" class="w-full p-2 border rounded text-sm">
+                <input type="text" id="tipe" placeholder="Tipe Motor" class="w-full p-2 border rounded text-sm">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <input type="text" id="plat" placeholder="Nomor Plat *" class="w-full p-2 border rounded text-sm uppercase">
+                <input type="number" id="kilometer" placeholder="KM Motor" min="0" class="w-full p-2 border rounded text-sm">
+            </div>
 
-            <div class="text-sm font-medium text-gray-700 mt-3 mb-1">Rincian Pekerjaan & Biaya</div>
-            <div class="flex gap-2"><input type="text" class="input-kerja p-2 border rounded" id="kerja1" placeholder="1. Pekerjaan/Jasa"><input type="text" class="input-biaya p-2 border rounded w-28" id="biaya1" placeholder="0" oninput="formatBiaya(this); hitungTotal()"></div>
-            <div class="flex gap-2"><input type="text" class="input-kerja p-2 border rounded" id="kerja2" placeholder="2. Pekerjaan/Jasa"><input type="text" class="input-biaya p-2 border rounded w-28" id="biaya2" placeholder="0" oninput="formatBiaya(this); hitungTotal()"></div>
-            <div class="flex gap-2"><input type="text" class="input-kerja p-2 border rounded" id="kerja3" placeholder="3. Pekerjaan/Jasa"><input type="text" class="input-biaya p-2 border rounded w-28" id="biaya3" placeholder="0" oninput="formatBiaya(this); hitungTotal()"></div>
-            <div class="flex gap-2"><input type="text" class="input-kerja p-2 border rounded" id="kerja4" placeholder="4. Pekerjaan/Jasa"><input type="text" class="input-biaya p-2 border rounded w-28" id="biaya4" placeholder="0" oninput="formatBiaya(this); hitungTotal()"></div>
-            <div class="flex gap-2"><input type="text" class="input-kerja p-2 border rounded" id="kerja5" placeholder="5. Pekerjaan/Jasa"><input type="text" class="input-biaya p-2 border rounded w-28" id="biaya5" placeholder="0" oninput="formatBiaya(this); hitungTotal()"></div>
+            <div class="text-xs font-semibold text-gray-700 mt-3">Rincian Pekerjaan & Biaya</div>
+            <div class="flex gap-2"><input type="text" class="input-kerja p-2 border rounded text-sm" id="kerja1" placeholder="1. Jasa / Sparepart"><input type="text" class="input-biaya p-2 border rounded w-28 text-sm" id="biaya1" placeholder="0" oninput="formatBiaya(this); hitungTotal()"></div>
+            <div class="flex gap-2"><input type="text" class="input-kerja p-2 border rounded text-sm" id="kerja2" placeholder="2. Jasa / Sparepart"><input type="text" class="input-biaya p-2 border rounded w-28 text-sm" id="biaya2" placeholder="0" oninput="formatBiaya(this); hitungTotal()"></div>
+            <div class="flex gap-2"><input type="text" class="input-kerja p-2 border rounded text-sm" id="kerja3" placeholder="3. Jasa / Sparepart"><input type="text" class="input-biaya p-2 border rounded w-28 text-sm" id="biaya3" placeholder="0" oninput="formatBiaya(this); hitungTotal()"></div>
+            <div class="flex gap-2"><input type="text" class="input-kerja p-2 border rounded text-sm" id="kerja4" placeholder="4. Jasa / Sparepart"><input type="text" class="input-biaya p-2 border rounded w-28 text-sm" id="biaya4" placeholder="0" oninput="formatBiaya(this); hitungTotal()"></div>
+            <div class="flex gap-2"><input type="text" class="input-kerja p-2 border rounded text-sm" id="kerja5" placeholder="5. Jasa / Sparepart"><input type="text" class="input-biaya p-2 border rounded w-28 text-sm" id="biaya5" placeholder="0" oninput="formatBiaya(this); hitungTotal()"></div>
 
-            <div class="flex justify-between items-center font-bold text-lg p-2 bg-gray-50 rounded"><span>TOTAL BIAYA</span><span id="totalLangsung" class="text-green-700">Rp 0</span></div>
-            <textarea id="catatan" placeholder="CATATAN" rows="2" class="w-full p-2 border rounded"></textarea>
-            <div class="flex gap-2"><button onclick="simpanData()" class="flex-1 bg-green-700 text-white px-5 py-2 rounded hover:bg-green-800">Simpan</button><button onclick="resetForm()" class="bg-gray-500 text-white px-5 py-2 rounded">Batal</button></div>
+            <div class="flex justify-between items-center font-bold text-base p-2 bg-green-50 rounded border border-green-200">
+                <span>TOTAL BIAYA</span>
+                <span id="totalLangsung" class="text-green-800">Rp 0</span>
+            </div>
+            <textarea id="catatan" placeholder="Catatan tambahan (Opsional)" rows="2" class="w-full p-2 border rounded text-sm"></textarea>
+            <div class="flex gap-2">
+                <button onclick="simpanData()" id="btnSimpan" class="flex-1 bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 font-medium text-sm">Simpan Data</button>
+                <button onclick="resetForm()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 text-sm">Batal</button>
+            </div>
         </div>
     </div>
 
-    <div class="bg-white p-5 rounded shadow no-print">
-        <h3 class="text-lg font-semibold mb-3">Cari & Riwayat Servis</h3>
-        <input type="text" id="kataKunci" placeholder="Cari nama / merk / tipe / plat / no hp..." class="w-full p-2 border rounded mb-3" oninput="tampilData()">
-        <div class="mb-3 p-2 bg-gray-50 rounded text-sm">
-            <div class="font-medium mb-2">📌 Urutkan Berdasarkan:</div>
-            <div class="flex flex-wrap gap-2">
+    <div class="bg-white p-4 rounded shadow no-print">
+        <h3 class="text-lg font-semibold mb-3 text-gray-800">Cari & Riwayat Servis</h3>
+        <input type="text" id="kataKunci" placeholder="Cari nama, merk, tipe, plat, atau HP..." class="w-full p-2 border rounded mb-3 text-sm" oninput="tampilData()">
+        <div class="mb-3 p-2 bg-gray-50 rounded text-xs">
+            <div class="font-medium mb-1.5 text-gray-600">📌 Urutkan Berdasarkan:</div>
+            <div class="flex flex-wrap gap-1.5">
                 <button class="btn-sortir aktif" onclick="aturSortir('tgl')">Tanggal ↕️</button>
                 <button class="btn-sortir" onclick="aturSortir('nama')">Nama A-Z</button>
-                <button class="btn-sortir" onclick="aturSortir('merk')">Merk Motor</button>
-                <button class="btn-sortir" onclick="aturSortir('tipe')">Tipe Motor</button>
+                <button class="btn-sortir" onclick="aturSortir('merk')">Merk</button>
+                <button class="btn-sortir" onclick="aturSortir('tipe')">Tipe</button>
                 <button class="btn-sortir" onclick="aturSortir('total')">Biaya ↕️</button>
             </div>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-100"><tr><th class="p-2 text-center">Tgl</th><th class="p-2">Nama</th><th class="p-2">Merk/Tipe</th><th class="p-2">Plat/Km</th><th class="p-2 text-right">Total</th><th class="p-2 text-center">Aksi</th></tr></thead>
+            <table class="w-full text-xs text-left">
+                <thead class="bg-gray-100 text-gray-700">
+                    <tr>
+                        <th class="p-2 text-center">Tgl</th>
+                        <th class="p-2">Pelanggan</th>
+                        <th class="p-2">Motor</th>
+                        <th class="p-2">Plat / KM</th>
+                        <th class="p-2 text-right">Total</th>
+                        <th class="p-2 text-center">Aksi</th>
+                    </tr>
+                </thead>
                 <tbody id="daftarRiwayat"></tbody>
             </table>
         </div>
@@ -98,8 +124,11 @@
     <div id="modalStruk">
         <div class="isi-modal">
             <div id="areaCetak"></div>
-            <div class="flex gap-2 mt-4 no-print"><button onclick="cetakStruk()" class="flex-1 bg-blue-600 text-white py-2 rounded">🖨️ Cetak</button><button onclick="bagikanWA()" class="flex-1 bg-green-600 text-white py-2 rounded">📲 Kirim WA</button></div>
-            <button onclick="tutupStruk()" class="w-full mt-2 bg-gray-500 text-white py-2 rounded">❌ Tutup</button>
+            <div class="flex gap-2 mt-4 no-print">
+                <button onclick="cetakStruk()" class="flex-1 bg-blue-600 text-white py-2 rounded text-xs font-semibold">🖨️ Cetak</button>
+                <button onclick="bagikanWA()" class="flex-1 bg-green-600 text-white py-2 rounded text-xs font-semibold">📲 Kirim WA</button>
+            </div>
+            <button onclick="tutupStruk()" class="w-full mt-2 bg-gray-500 text-white py-1.5 rounded text-xs no-print">❌ Tutup</button>
         </div>
     </div>
 
@@ -107,37 +136,79 @@
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbwDqz86dcTCIPD_3zcg1H82fSJ4PPtn_IL4lKybaohJbESrSAbdBRgSKmxj2UvCM5ANEg/exec";
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
-function formatBiaya(input) { let n = input.value.replace(/\D/g,''); input.value = n.replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
-function ambilAngka(id) { return parseInt(document.getElementById(id).value.replace(/\./g,'')) || 0; }
-function ubahFormatTanggal(t) { return t ? `${t.slice(8,10)}-${t.slice(5,7)}-${t.slice(0,4)}` : ''; }
-function aturSortir(k) { kolomSortir===k ? urutanNaik=!urutanNaik : (kolomSortir=k, urutanNaik=(k==='tgl'||k==='total')?false:true); tampilData(); }
-function hitungTotal() { let t=0; for(let i=1;i<=5;i++) t+=ambilAngka(`biaya${i}`); document.getElementById('totalLangsung').textContent = `Rp ${t.toLocaleString('id-ID')}`; }
-function resetForm() { document.getElementById('editId').value=''; document.getElementById('judulForm').textContent='Tambah Riwayat Servis'; document.querySelectorAll('input,textarea').forEach(e=>e.value=''); hitungTotal(); }
+function initApp() {
+    resetForm();
+    tampilData();
+}
+
+function formatBiaya(input) { 
+    let n = input.value.replace(/\D/g,''); 
+    input.value = n ? parseInt(n, 10).toLocaleString('id-ID') : ''; 
+}
+
+function ambilAngka(id) { 
+    return parseInt(document.getElementById(id).value.replace(/\./g,'')) || 0; 
+}
+
+function ubahFormatTanggal(t) { 
+    if(!t) return '';
+    const [thn, bln, tgl] = t.split('-');
+    return `${tgl}-${bln}-${thn}`; 
+}
+
+function aturSortir(k) { 
+    if (kolomSortir === k) {
+        urutanNaik = !urutanNaik;
+    } else {
+        kolomSortir = k;
+        urutanNaik = (k === 'nama' || k === 'merk' || k === 'tipe');
+    }
+    tampilData(); 
+}
+
+function hitungTotal() { 
+    let t = 0; 
+    for(let i = 1; i <= 5; i++) t += ambilAngka(`biaya${i}`); 
+    document.getElementById('totalLangsung').textContent = `Rp ${t.toLocaleString('id-ID')}`; 
+}
+
+function resetForm() { 
+    document.getElementById('editId').value = ''; 
+    document.getElementById('judulForm').textContent = 'Tambah Riwayat Servis'; 
+    document.querySelectorAll('input, textarea').forEach(e => {
+        if(e.type !== 'button') e.value = '';
+    });
+    // Set default ke tanggal hari ini
+    document.getElementById('tanggal').value = new Date().toISOString().split('T')[0];
+    hitungTotal(); 
+}
 
 function ambilData() { 
     try {
         const d = localStorage.getItem('riwayatServis');
         if (!d) return [];
-        const daftar = JSON.parse(d);
-        return daftar.map(i => {
-            if (!i.merk && i.motor) {
-                const b = String(i.motor || '').split(' - ');
-                i.merk = b[0] || '';
-                i.tipe = b[1] || '';
-            }
-            if (!i.daftarPekerjaan) i.daftarPekerjaan = [];
-            return i;
-        });
+        return JSON.parse(d);
     } catch (err) {
         console.error('Gagal membaca data:', err);
         return [];
     }
 }
-function simpanKeStorage(d) { localStorage.setItem('riwayatServis', JSON.stringify(d)); }
+
+function simpanKeStorage(d) { 
+    localStorage.setItem('riwayatServis', JSON.stringify(d)); 
+}
 
 async function simpanKeSpreadsheet(data) {
     if (!URL_GOOGLE_SHEETS || URL_GOOGLE_SHEETS.includes("URL_KAMU_DI_SINI")) return;
-    const rincian = data.daftarPekerjaan.map(p => p.nama ? `${p.nama}: Rp ${p.biaya.toLocaleString('id-ID')}` : '').filter(x=>x).join(' | ');
+    
+    const statusEl = document.getElementById('statusProses');
+    if(statusEl) statusEl.classList.remove('hidden');
+
+    const rincian = data.daftarPekerjaan
+        .map(p => p.nama ? `${p.nama}: Rp ${p.biaya.toLocaleString('id-ID')}` : '')
+        .filter(Boolean)
+        .join(' | ');
+
     const kirim = { 
         tanggal: ubahFormatTanggal(data.tgl), 
         nama: data.nama, 
@@ -145,11 +216,12 @@ async function simpanKeSpreadsheet(data) {
         merk: data.merk, 
         tipe: data.tipe, 
         plat: data.plat, 
-        kilometer: data.kilometer ? data.kilometer+' Km' : '-', 
+        kilometer: data.kilometer ? data.kilometer + ' Km' : '-', 
         rincian: rincian, 
         total: 'Rp ' + data.total.toLocaleString('id-ID'), 
         catatan: data.catatan || '-' 
     };
+
     try { 
         await fetch(URL_GOOGLE_SHEETS, { 
             method: 'POST', 
@@ -158,7 +230,9 @@ async function simpanKeSpreadsheet(data) {
             body: JSON.stringify(kirim) 
         }); 
     } catch(e) { 
-        console.warn('Tidak terhubung ke internet, data tersimpan di perangkat saja', e); 
+        console.warn('Simpan offline (perangkat saja).', e); 
+    } finally {
+        if(statusEl) statusEl.classList.add('hidden');
     }
 }
 
@@ -169,109 +243,220 @@ function simpanData() {
           nohp = document.getElementById('nohp').value.trim(), 
           merk = document.getElementById('merk').value.trim(), 
           tipe = document.getElementById('tipe').value.trim(), 
-          plat = document.getElementById('plat').value.trim(), 
+          plat = document.getElementById('plat').value.trim().toUpperCase(), 
           kilometer = document.getElementById('kilometer').value.trim(), 
           catatan = document.getElementById('catatan').value.trim();
 
-    if (!tanggal || !nama || !nohp || !merk || !plat) return alert('Lengkapi Tanggal, Nama, No HP, Merk Motor, dan No Plat!');
+    if (!tanggal || !nama || !nohp || !merk || !plat) {
+        return alert('Lengkapi Tanggal, Nama, No HP, Merk Motor, dan No Plat!');
+    }
     
     const pekerjaan = []; 
-    for(let i=1;i<=5;i++){
-        const n=document.getElementById(`kerja${i}`).value.trim(), b=ambilAngka(`biaya${i}`);
-        if(n||b>0) pekerjaan.push({nama:n, biaya:b});
+    for(let i = 1; i <= 5; i++){
+        const n = document.getElementById(`kerja${i}`).value.trim();
+        const b = ambilAngka(`biaya${i}`);
+        if(n || b > 0) pekerjaan.push({nama: n, biaya: b});
     }
-    if(pekerjaan.length===0) return alert('Isi minimal satu pekerjaan dan biayanya!');
+
+    if(pekerjaan.length === 0) return alert('Isi minimal satu pekerjaan dan biayanya!');
     
-    const total = pekerjaan.reduce((s,i)=>s+i.biaya,0), daftar = ambilData();
+    const total = pekerjaan.reduce((s, i) => s + i.biaya, 0);
+    const daftar = ambilData();
     
     if(editId){
-        const i=daftar.findIndex(x=>x.id==editId);
-        if(i>-1){
-            daftar[i]={...daftar[i], tgl:tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan:pekerjaan, total, catatan};
-            alert('✅ Data diperbarui');
+        const i = daftar.findIndex(x => x.id == editId);
+        if(i > -1){
+            daftar[i] = {...daftar[i], tgl: tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan: pekerjaan, total, catatan};
+            alert('✅ Data berhasil diperbarui!');
         }
     } else {
-        const baru={id:Date.now(), tgl:tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan:pekerjaan, total, catatan};
+        const baru = {id: Date.now(), tgl: tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan: pekerjaan, total, catatan};
         daftar.unshift(baru);
-        alert('✅ Tersimpan & disinkronkan ke Google Sheets');
         simpanKeSpreadsheet(baru);
+        alert('✅ Tersimpan & disinkronkan ke Google Sheets');
     }
-    simpanKeStorage(daftar); resetForm(); tampilData();
+
+    simpanKeStorage(daftar); 
+    resetForm(); 
+    tampilData();
 }
 
 function tampilData() {
-    const k = document.getElementById('kataKunci').value.toLowerCase(), daftar = ambilData(), tbody = document.getElementById('daftarRiwayat');
-    let hasil = daftar.filter(i=>i.nama.toLowerCase().includes(k)||(i.merk||'').toLowerCase().includes(k)||(i.tipe||'').toLowerCase().includes(k)||(i.plat||'').toLowerCase().includes(k)||i.nohp.includes(k));
+    const k = document.getElementById('kataKunci').value.toLowerCase();
+    const daftar = ambilData();
+    const tbody = document.getElementById('daftarRiwayat');
+
+    let hasil = daftar.filter(i => 
+        (i.nama || '').toLowerCase().includes(k) ||
+        (i.merk || '').toLowerCase().includes(k) ||
+        (i.tipe || '').toLowerCase().includes(k) ||
+        (i.plat || '').toLowerCase().includes(k) ||
+        (i.nohp || '').includes(k)
+    );
     
-    hasil.sort((a,b)=>{
-        let na,nb;
+    hasil.sort((a, b) => {
+        let na, nb;
         switch(kolomSortir){
-            case'tgl':na=a.tgl;nb=b.tgl;break;
-            case'nama':na=a.nama.toLowerCase();nb=b.nama.toLowerCase();break;
-            case'merk':na=(a.merk||'').toLowerCase();nb=(b.merk||'').toLowerCase();break;
-            case'tipe':na=(a.tipe||'').toLowerCase();nb=(b.tipe||'').toLowerCase();break;
-            case'total':na=a.total||0;nb=b.total||0;break;
-            default:na=a.tgl;nb=b.tgl;
+            case 'tgl': na = a.tgl; nb = b.tgl; break;
+            case 'nama': na = (a.nama || '').toLowerCase(); nb = (b.nama || '').toLowerCase(); break;
+            case 'merk': na = (a.merk || '').toLowerCase(); nb = (b.merk || '').toLowerCase(); break;
+            case 'tipe': na = (a.tipe || '').toLowerCase(); nb = (b.tipe || '').toLowerCase(); break;
+            case 'total': na = a.total || 0; nb = b.total || 0; break;
+            default: na = a.tgl; nb = b.tgl;
         }
-        return na<nb?(urutanNaik?-1:1):na>nb?(urutanNaik?1:-1):0;
+        if (na < nb) return urutanNaik ? -1 : 1;
+        if (na > nb) return urutanNaik ? 1 : -1;
+        return 0;
     });
 
-    document.querySelectorAll('.btn-sortir').forEach(b=>b.classList.remove('aktif')); 
-    document.querySelector('.btn-sortir[onclick*="'+kolomSortir+'"]')?.classList.add('aktif');
+    document.querySelectorAll('.btn-sortir').forEach(b => b.classList.remove('aktif')); 
+    document.querySelector(`.btn-sortir[onclick*="${kolomSortir}"]`)?.classList.add('aktif');
     
-    tbody.innerHTML = hasil.length ? hasil.map(i=>`<tr class="border-b border-gray-100"><td class="p-2 text-center">${ubahFormatTanggal(i.tgl)}</td><td class="p-2">${i.nama}<br><small class="text-gray-500">${i.nohp}</small></td><td class="p-2">${i.merk||'-'}<br><small class="text-gray-500">${i.tipe||'-'}</small></td><td class="p-2">${i.plat||'-'}<br><small class="text-gray-500">${i.kilometer?i.kilometer+' Km':'-'}</small></td><td class="p-2 text-right font-medium">Rp ${i.total.toLocaleString('id-ID')}</td><td class="p-2 text-center whitespace-nowrap"><button onclick="bukaStruk(${i.id})" class="bg-blue-500 text-white text-xs px-2 py-1 rounded mb-1">Struk</button><button onclick="bukaEdit(${i.id})" class="bg-amber-500 text-white text-xs px-2 py-1 rounded mb-1 ml-1">Edit</button><button onclick="hapusData(${i.id})" class="bg-red-500 text-white text-xs px-2 py-1 rounded ml-1">Hapus</button></td></tr>`).join('') : `<tr><td colspan="6" class="p-4 text-center text-gray-500">Belum ada data</td></tr>`;
+    tbody.innerHTML = hasil.length ? hasil.map(i => `
+        <tr class="border-b border-gray-100 hover:bg-gray-50">
+            <td class="p-2 text-center whitespace-nowrap">${ubahFormatTanggal(i.tgl)}</td>
+            <td class="p-2"><strong>${i.nama}</strong><br><span class="text-gray-500">${i.nohp}</span></td>
+            <td class="p-2">${i.merk || '-'}<br><span class="text-gray-500">${i.tipe || '-'}</span></td>
+            <td class="p-2">${i.plat || '-'}<br><span class="text-gray-500">${i.kilometer ? i.kilometer + ' Km' : '-'}</span></td>
+            <td class="p-2 text-right font-semibold text-green-700 whitespace-nowrap">Rp ${i.total.toLocaleString('id-ID')}</td>
+            <td class="p-2 text-center whitespace-nowrap">
+                <button onclick="bukaStruk(${i.id})" class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Struk</button>
+                <button onclick="bukaEdit(${i.id})" class="bg-amber-500 text-white px-2 py-1 rounded text-xs ml-1">Edit</button>
+                <button onclick="hapusData(${i.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs ml-1">Hapus</button>
+            </td>
+        </tr>
+    `).join('') : `<tr><td colspan="6" class="p-4 text-center text-gray-500">Data tidak ditemukan</td></tr>`;
 }
 
 function eksporExcel() { 
-    const d=ambilData(), b="\uFEFFTanggal,Nama,No HP,Merk Motor,Tipe Motor,No Plat,Kilometer,Rincian,Total,Catatan\n"+d.map(i=>{let r='';i.daftarPekerjaan.forEach(p=>{if(p.nama)r+=`• ${p.nama}:Rp ${p.biaya}\n`;});return `"${ubahFormatTanggal(i.tgl)}","${i.nama}","${i.nohp}","${i.merk}","${i.tipe}","${i.plat}","${i.kilometer||'-'}","${r.trim()}","${i.total}","${i.catatan||'-'}"`;}).join('\n');
-    const blob=new Blob([b],{type:'text/csv;charset=utf-8'});
-    const u=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=u; a.download=`Laporan-Servis-${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.csv`; a.click(); URL.revokeObjectURL(u); 
+    const d = ambilData();
+    let csv = "\uFEFFTanggal,Nama,No HP,Merk Motor,Tipe Motor,No Plat,Kilometer,Rincian,Total,Catatan\n";
+    
+    d.forEach(i => {
+        let r = i.daftarPekerjaan.map(p => p.nama ? `${p.nama} (Rp ${p.biaya})` : '').filter(Boolean).join('; ');
+        csv += `"${ubahFormatTanggal(i.tgl)}","${i.nama}","${i.nohp}","${i.merk}","${i.tipe}","${i.plat}","${i.kilometer||'-'}","${r}","${i.total}","${i.catatan||'-'}"\n`;
+    });
+
+    const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement('a'); 
+    a.href = u; 
+    a.download = `Laporan-Servis-${new Date().toISOString().slice(0,10)}.csv`; 
+    a.click(); 
+    URL.revokeObjectURL(u); 
 }
 
 function eksporData() { 
-    const d=ambilData(), b=new Blob([JSON.stringify(d,null,2)]);
-    const u=URL.createObjectURL(b);
-    const a=document.createElement('a'); a.href=u; a.download=`Cadangan-Servis-${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.json`; a.click(); URL.revokeObjectURL(u); 
+    const d = ambilData();
+    const blob = new Blob([JSON.stringify(d, null, 2)], {type: 'application/json'});
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement('a'); 
+    a.href = u; 
+    a.download = `Backup-Servis-${new Date().toISOString().slice(0,10)}.json`; 
+    a.click(); 
+    URL.revokeObjectURL(u); 
 }
 
 function imporData(e) { 
-    if(!e.target.files[0]||!confirm('Ganti data lama?'))return;
-    const r=new FileReader();
-    r.onload=ev=>{try{simpanKeStorage(JSON.parse(ev.target.result)); tampilData(); alert('✅ Dipulihkan');}catch{alert('❌ File tidak valid');}};
-    r.readAsText(e.target.files[0]); 
+    const file = e.target.files[0];
+    if(!file) return;
+    if(!confirm('Ganti data lama dengan data dari cadangan?')) return;
+    
+    const r = new FileReader();
+    r.onload = ev => {
+        try {
+            const parsed = JSON.parse(ev.target.result);
+            if(Array.isArray(parsed)) {
+                simpanKeStorage(parsed); 
+                tampilData(); 
+                alert('✅ Data berhasil dipulihkan!');
+            } else {
+                alert('❌ Format file tidak cocok.');
+            }
+        } catch {
+            alert('❌ File tidak valid.');
+        }
+    };
+    r.readAsText(file); 
 }
 
 function bukaEdit(id) { 
-    const d=ambilData().find(x=>x.id===id); if(!d)return alert('Tidak ditemukan');
-    document.getElementById('editId').value=id; document.getElementById('judulForm').textContent='Edit Riwayat Servis';
-    document.getElementById('tanggal').value=d.tgl; document.getElementById('nama').value=d.nama;
-    document.getElementById('nohp').value=d.nohp; document.getElementById('merk').value=d.merk||'';
-    document.getElementById('tipe').value=d.tipe||''; document.getElementById('plat').value=d.plat||'';
-    document.getElementById('kilometer').value=d.kilometer||''; document.getElementById('catatan').value=d.catatan||'';
-    for(let i=1;i<=5;i++){
-        const x=d.daftarPekerjaan[i-1]||{nama:'',biaya:0};
-        document.getElementById(`kerja${i}`).value=x.nama;
-        document.getElementById(`biaya${i}`).value=x.biaya>0?x.biaya.toLocaleString('id-ID'):'';
+    const d = ambilData().find(x => x.id === id); 
+    if(!d) return alert('Data tidak ditemukan!');
+    
+    document.getElementById('editId').value = id; 
+    document.getElementById('judulForm').textContent = 'Edit Riwayat Servis';
+    document.getElementById('tanggal').value = d.tgl; 
+    document.getElementById('nama').value = d.nama;
+    document.getElementById('nohp').value = d.nohp; 
+    document.getElementById('merk').value = d.merk || '';
+    document.getElementById('tipe').value = d.tipe || ''; 
+    document.getElementById('plat').value = d.plat || '';
+    document.getElementById('kilometer').value = d.kilometer || ''; 
+    document.getElementById('catatan').value = d.catatan || '';
+
+    for(let i = 1; i <= 5; i++){
+        const x = d.daftarPekerjaan[i-1] || {nama: '', biaya: 0};
+        document.getElementById(`kerja${i}`).value = x.nama;
+        document.getElementById(`biaya${i}`).value = x.biaya > 0 ? x.biaya.toLocaleString('id-ID') : '';
     }
-    hitungTotal(); window.scrollTo({top:0}); 
+    
+    hitungTotal(); 
+    window.scrollTo({top: 0, behavior: 'smooth'}); 
 }
 
-function hapusData(id) { if(confirm('Yakin hapus?')){simpanKeStorage(ambilData().filter(x=>x.id!==id)); tampilData();} }
+function hapusData(id) { 
+    if(confirm('Yakin ingin menghapus data ini?')){
+        simpanKeStorage(ambilData().filter(x => x.id !== id)); 
+        tampilData();
+    } 
+}
 
 function bukaStruk(id) { 
-    dataTerpilih=ambilData().find(x=>x.id===id); if(!dataTerpilih)return;
-    let r='';
-    dataTerpilih.daftarPekerjaan.forEach(p=>r+=`<div class="baris"><span>${p.nama||'-'}</span><span class="kanan">Rp ${p.biaya.toLocaleString('id-ID')}</span></div>`);
-    document.getElementById('areaCetak').innerHTML=`<div class="struk"><div class="judul-toko">MF.EV SERVICE</div><div class="sub-judul">Pangkalpinang, Bangka Belitung</div><div class="garis"></div><div class="baris-struk"><span class="label-struk">Tanggal</span><span>: ${ubahFormatTanggal(dataTerpilih.tgl)}</span></div><div class="garis"></div><div class="baris-struk"><span class="label-struk">Pelanggan</span><span>: ${dataTerpilih.nama}</span></div><div class="baris-struk"><span class="label-struk">No HP</span><span>: ${dataTerpilih.nohp}</span></div><div class="baris-struk"><span class="label-struk">Merk Motor</span><span>: ${dataTerpilih.merk||'-'}</span></div><div class="baris-struk"><span class="label-struk">Tipe Motor</span><span>: ${dataTerpilih.tipe||'-'}</span></div><div class="baris-struk"><span class="label-struk">No Plat</span><span>: ${dataTerpilih.plat||'-'}</span></div><div class="baris-struk"><span class="label-struk">Km Saat Ini</span><span>: ${dataTerpilih.kilometer?dataTerpilih.kilometer+' Km':'-'}</span></div><div class="garis"></div><div class="tebal">RINCIAN PEKERJAAN:</div>${r}<div class="garis"></div><div class="baris tebal" style="font-size:13px;"><span>TOTAL BAYAR</span><span class="kanan">Rp ${dataTerpilih.total.toLocaleString('id-ID')}</span></div><div class="garis"></div><div class="tebal">CATATAN:</div><div>${dataTerpilih.catatan||'-'}</div><div class="garis"></div><div class="tengah">Terima Kasih</div><div class="tengah">Semoga Motor Anda Awet :-)</div></div>`;
-    document.getElementById('modalStruk').style.display='block'; 
+    dataTerpilih = ambilData().find(x => x.id === id); 
+    if(!dataTerpilih) return;
+    
+    let r = '';
+    dataTerpilih.daftarPekerjaan.forEach(p => {
+        if(p.nama) {
+            r += `<div class="baris"><span>${p.nama}</span><span class="kanan">Rp ${p.biaya.toLocaleString('id-ID')}</span></div>`;
+        }
+    });
+
+    document.getElementById('areaCetak').innerHTML = `
+        <div class="struk">
+            <div class="judul-toko">MF.EV SERVICE</div>
+            <div class="sub-judul">Pangkalpinang, Bangka Belitung</div>
+            <div class="garis"></div>
+            <div class="baris-struk"><span class="label-struk">Tanggal</span><span>: ${ubahFormatTanggal(dataTerpilih.tgl)}</span></div>
+            <div class="baris-struk"><span class="label-struk">Pelanggan</span><span>: ${dataTerpilih.nama}</span></div>
+            <div class="baris-struk"><span class="label-struk">No HP</span><span>: ${dataTerpilih.nohp}</span></div>
+            <div class="baris-struk"><span class="label-struk">Merk / Tipe</span><span>: ${dataTerpilih.merk||'-'} ${dataTerpilih.tipe||''}</span></div>
+            <div class="baris-struk"><span class="label-struk">No Plat</span><span>: ${dataTerpilih.plat||'-'}</span></div>
+            <div class="baris-struk"><span class="label-struk">KM Motor</span><span>: ${dataTerpilih.kilometer ? dataTerpilih.kilometer+' Km' : '-'}</span></div>
+            <div class="garis"></div>
+            <div class="tebal">RINCIAN PEKERJAAN:</div>
+            ${r}
+            <div class="garis"></div>
+            <div class="baris tebal" style="font-size:12px;"><span>TOTAL BIAYA</span><span class="kanan">Rp ${dataTerpilih.total.toLocaleString('id-ID')}</span></div>
+            <div class="garis"></div>
+            ${dataTerpilih.catatan ? `<div class="tebal">CATATAN:</div><div>${dataTerpilih.catatan}</div><div class="garis"></div>` : ''}
+            <div class="tengah">Terima Kasih</div>
+            <div class="tengah">Semoga Motor Anda Awet :-)</div>
+        </div>
+    `;
+    document.getElementById('modalStruk').style.display = 'block'; 
 }
 
-function tutupStruk() { document.getElementById('modalStruk').style.display='none'; }
-function cetakStruk() { window.print(); }
+function tutupStruk() { 
+    document.getElementById('modalStruk').style.display = 'none'; 
+}
 
-// Fungsi Kirim WA yang Diperbaiki Lengkap
-async function bagikanWA() {
+function cetakStruk() { 
+    window.print(); 
+}
+
+function bagikanWA() {
     if (!dataTerpilih) return alert('Data tidak ditemukan!');
     
     let rincianTeks = '';
@@ -283,8 +468,7 @@ async function bagikanWA() {
 📅 Tanggal : ${ubahFormatTanggal(dataTerpilih.tgl)}
 👤 Pelanggan : ${dataTerpilih.nama}
 📞 No HP : ${dataTerpilih.nohp}
-🏍️ Merk Motor : ${dataTerpilih.merk||'-'}
-🔧 Tipe Motor : ${dataTerpilih.tipe||'-'}
+🏍️ Motor : ${dataTerpilih.merk||'-'} ${dataTerpilih.tipe||''}
 🚘 No Plat : ${dataTerpilih.plat||'-'}
 📏 Kilometer : ${dataTerpilih.kilometer ? dataTerpilih.kilometer+' Km' : '-'}
 
