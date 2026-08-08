@@ -44,17 +44,7 @@
         <span id="statusProses" class="text-xs font-semibold text-amber-700 hidden">⏳ Mengambil data...</span>
     </div>
 
-    <div class="bg-amber-50 p-3 rounded mb-4 text-sm no-print border border-amber-200">
-        <div class="font-semibold mb-2 text-amber-900">📂 Cadangan & Pemulihan Data</div>
-        <div class="flex gap-2 flex-wrap">
-            <button onclick="tarikDataDariSheets()" class="bg-blue-700 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-800">🔄 Muat Ulang Sheets</button>
-            <button onclick="eksporExcel()" class="bg-green-700 text-white px-3 py-1.5 rounded text-xs hover:bg-green-800">📊 Ekspor Excel (CSV)</button>
-            <button onclick="eksporData()" class="bg-amber-600 text-white px-3 py-1.5 rounded text-xs hover:bg-amber-700">💾 Cadangan JSON</button>
-            <button onclick="document.getElementById('fileImpor').click()" class="bg-gray-600 text-white px-3 py-1.5 rounded text-xs hover:bg-gray-700">📂 Pulihkan Data</button>
-            <input type="file" id="fileImpor" accept=".json" class="hidden" onchange="imporData(event)">
-        </div>
-    </div>
-
+    <!-- FORM INPUT SERVIS -->
     <div class="bg-white p-4 rounded shadow mb-4 no-print">
         <h3 class="text-lg font-semibold mb-3 text-gray-800" id="judulForm">Tambah Riwayat Servis</h3>
         <div class="space-y-3">
@@ -95,6 +85,19 @@
         </div>
     </div>
 
+    <!-- BLOK CADANGAN & PEMULIHAN DATA (PINDAH KE BAWAH FORM SERVIS & DI ATAS RIWAYAT) -->
+    <div class="bg-amber-50 p-3 rounded mb-4 text-sm no-print border border-amber-200">
+        <div class="font-semibold mb-2 text-amber-900">📂 Cadangan & Pemulihan Data</div>
+        <div class="flex gap-2 flex-wrap">
+            <button onclick="tarikDataDariSheets()" class="bg-blue-700 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-800">🔄 Muat Ulang Sheets</button>
+            <button onclick="eksporExcel()" class="bg-green-700 text-white px-3 py-1.5 rounded text-xs hover:bg-green-800">📊 Ekspor Excel (CSV)</button>
+            <button onclick="eksporData()" class="bg-amber-600 text-white px-3 py-1.5 rounded text-xs hover:bg-amber-700">💾 Cadangan JSON</button>
+            <button onclick="document.getElementById('fileImpor').click()" class="bg-gray-600 text-white px-3 py-1.5 rounded text-xs hover:bg-gray-700">📂 Pulihkan Data</button>
+            <input type="file" id="fileImpor" accept=".json" class="hidden" onchange="imporData(event)">
+        </div>
+    </div>
+
+    <!-- DAFTAR RIWAYAT SERVIS -->
     <div class="bg-white p-4 rounded shadow no-print">
         <h3 class="text-lg font-semibold mb-3 text-gray-800">Cari & Riwayat Servis</h3>
         <input type="text" id="kataKunci" placeholder="Cari nama, merk, tipe, plat, atau HP..." class="w-full p-2 border rounded mb-3 text-sm" oninput="tampilData()">
@@ -393,189 +396,4 @@ function eksporExcel() {
     const u = URL.createObjectURL(blob);
     const a = document.createElement('a'); 
     a.href = u; 
-    a.download = `Laporan-Servis-${new Date().toISOString().slice(0,10)}.csv`; 
-    a.click(); 
-    URL.revokeObjectURL(u); 
-}
-
-function eksporData() { 
-    const d = ambilData();
-    const blob = new Blob([JSON.stringify(d, null, 2)], {type: 'application/json'});
-    const u = URL.createObjectURL(blob);
-    const a = document.createElement('a'); 
-    a.href = u; 
-    a.download = `Backup-Servis-${new Date().toISOString().slice(0,10)}.json`; 
-    a.click(); 
-    URL.revokeObjectURL(u); 
-}
-
-function imporData(e) { 
-    const file = e.target.files[0];
-    if(!file) return;
-    if(!confirm('Ganti data lama dengan data dari cadangan?')) return;
-    
-    const r = new FileReader();
-    r.onload = ev => {
-        try {
-            const parsed = JSON.parse(ev.target.result);
-            if(Array.isArray(parsed)) {
-                simpanKeStorage(parsed); 
-                tampilData(); 
-                alert('✅ Data berhasil dipulihkan!');
-            } else {
-                alert('❌ Format file tidak cocok.');
-            }
-        } catch {
-            alert('❌ File tidak valid.');
-        }
-    };
-    r.readAsText(file); 
-}
-
-function bukaEdit(id) { 
-    const d = ambilData().find(x => x.id == id); 
-    if(!d) return alert('Data tidak ditemukan!');
-    
-    document.getElementById('editId').value = id; 
-    document.getElementById('judulForm').textContent = 'Edit Riwayat Servis';
-    document.getElementById('tanggal').value = d.tgl; 
-    document.getElementById('nama').value = d.nama;
-    document.getElementById('nohp').value = d.nohp; 
-    document.getElementById('merk').value = d.merk || '';
-    document.getElementById('tipe').value = d.tipe || ''; 
-    document.getElementById('plat').value = d.plat || '';
-    document.getElementById('kilometer').value = d.kilometer || ''; 
-    document.getElementById('catatan').value = d.catatan || '';
-
-    for(let i = 1; i <= 5; i++){
-        const x = (d.daftarPekerjaan && d.daftarPekerjaan[i-1]) ? d.daftarPekerjaan[i-1] : {nama: '', biaya: 0};
-        document.getElementById(`kerja${i}`).value = x.nama || '';
-        document.getElementById(`biaya${i}`).value = x.biaya > 0 ? x.biaya.toLocaleString('id-ID') : '';
-    }
-    
-    hitungTotal(); 
-    window.scrollTo({top: 0, behavior: 'smooth'}); 
-}
-
-function hapusData(id) { 
-    if(confirm('Yakin ingin menghapus data ini dari penyimpanan lokal?')){
-        simpanKeStorage(ambilData().filter(x => x.id != id)); 
-        tampilData();
-    } 
-}
-
-function bukaStruk(id) { 
-    dataTerpilih = ambilData().find(x => x.id == id); 
-    if(!dataTerpilih) return;
-    
-    let r = '';
-    if (dataTerpilih.daftarPekerjaan && Array.isArray(dataTerpilih.daftarPekerjaan)) {
-        dataTerpilih.daftarPekerjaan.forEach(p => {
-            if(p.nama) {
-                r += `<div class="baris"><span>${p.nama}</span><span class="kanan">Rp ${(p.biaya || 0).toLocaleString('id-ID')}</span></div>`;
-            }
-        });
-    }
-
-    document.getElementById('areaCetak').innerHTML = `
-        <div class="struk" id="strukFisik">
-            <div class="judul-toko">MF.EV SERVICE</div>
-            <div class="sub-judul">Pangkalpinang, Bangka Belitung</div>
-            <div class="garis"></div>
-            <div class="baris-struk"><span class="label-struk">Tanggal</span><span>: ${ubahFormatTanggal(dataTerpilih.tgl)}</span></div>
-            <div class="baris-struk"><span class="label-struk">Pelanggan</span><span>: ${dataTerpilih.nama}</span></div>
-            <div class="baris-struk"><span class="label-struk">No HP</span><span>: ${dataTerpilih.nohp}</span></div>
-            <div class="baris-struk"><span class="label-struk">Merk / Tipe</span><span>: ${dataTerpilih.merk||'-'} ${dataTerpilih.tipe||''}</span></div>
-            <div class="baris-struk"><span class="label-struk">No Plat</span><span>: ${dataTerpilih.plat||'-'}</span></div>
-            <div class="baris-struk"><span class="label-struk">KM Motor</span><span>: ${dataTerpilih.kilometer ? dataTerpilih.kilometer+' Km' : '-'}</span></div>
-            <div class="garis"></div>
-            <div class="tebal">RINCIAN PEKERJAAN:</div>
-            ${r}
-            <div class="garis"></div>
-            <div class="baris tebal" style="font-size:12px;"><span>TOTAL BIAYA</span><span class="kanan">Rp ${(dataTerpilih.total || 0).toLocaleString('id-ID')}</span></div>
-            <div class="garis"></div>
-            ${dataTerpilih.catatan ? `<div class="tebal">CATATAN:</div><div>${dataTerpilih.catatan}</div><div class="garis"></div>` : ''}
-            <div class="tengah">Terima Kasih</div>
-            <div class="tengah">Semoga Motor Anda Awet :-)</div>
-        </div>
-    `;
-    document.getElementById('modalStruk').style.display = 'block'; 
-}
-
-function tutupStruk() { 
-    document.getElementById('modalStruk').style.display = 'none'; 
-}
-
-function cetakStruk() { 
-    window.print(); 
-}
-
-// FUNGSI SHARE DENGAN GAMBAR STRUK DI SERTAKAN KETIKA BAGIKAN KE WA
-async function bagikanWA() {
-    if (!dataTerpilih) return alert('Data tidak ditemukan!');
-    
-    const btn = document.getElementById('btnWA');
-    btn.textContent = "⏳ Memproses...";
-    btn.disabled = true;
-
-    try {
-        const elemStruk = document.getElementById('strukFisik');
-        const canvas = await html2canvas(elemStruk, { scale: 2 });
-        
-        // Buat file Blob dari canvas
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-        const file = new File([blob], `Struk-${dataTerpilih.nama}.png`, { type: 'image/png' });
-
-        let rincianTeks = '';
-        if (dataTerpilih.daftarPekerjaan && Array.isArray(dataTerpilih.daftarPekerjaan)) {
-            dataTerpilih.daftarPekerjaan.forEach(p => {
-                if(p.nama) rincianTeks += `• ${p.nama} : Rp ${(p.biaya || 0).toLocaleString('id-ID')}\n`;
-            });
-        }
-
-        const pesan = `STRUK SERVIS MF.EV SERVICE
-📅 Tanggal: ${ubahFormatTanggal(dataTerpilih.tgl)}
-👤 Nama: ${dataTerpilih.nama}
-🏍️ Motor: ${dataTerpilih.merk||'-'} ${dataTerpilih.tipe||''}
-🚘 No Plat: ${dataTerpilih.plat||'-'}
-📏 Kilometer: ${dataTerpilih.kilometer ? dataTerpilih.kilometer+' Km' : '-'}
-
-📝 Rincian:
-${rincianTeks}
-💰 Total: Rp ${(dataTerpilih.total || 0).toLocaleString('id-ID')}
-📄 CATATAN: ${dataTerpilih.catatan || '-'}
-
-Terima kasih sudah berkunjung!`;
-
-        // Gunakan Web Share API jika didukung oleh browser HP
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-                files: [file],
-                title: 'Struk Servis MF.EV',
-                text: pesan
-            });
-        } else {
-            // Fallback untuk browser yang tidak mendukung Web Share File
-            const a = document.createElement("a");
-            a.href = canvas.toDataURL("image/png");
-            a.download = `Struk-${dataTerpilih.nama}.png`;
-            a.click();
-
-            let hp = String(dataTerpilih.nohp).replace(/\D/g, '');
-            if (hp.startsWith('0')) hp = '62' + hp.slice(1);
-            const urlWA = `https://api.whatsapp.com/send?phone=${hp}&text=${encodeURIComponent(pesan)}`;
-
-            alert("📷 Gambar Struk berhasil diunduh otomatis!\nSilakan buka WA & lampirkan gambar struknya.");
-            window.open(urlWA, '_blank');
-        }
-    } catch (err) {
-        console.error("Gagal membagikan:", err);
-        alert("Gagal memproses gambar struk.");
-    } finally {
-        btn.textContent = "📲 Kirim WA";
-        btn.disabled = false;
-    }
-}
-</script>
-</body>
-</html>
+    a.download = `Laporan-Servis-${new Date().toISOString().slice
