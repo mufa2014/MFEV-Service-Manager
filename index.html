@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MF.EV Service Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Library untuk konversi HTML Struk ke Gambar -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         @page { size: 58mm auto; margin: 0; }
         @media print {
@@ -128,7 +130,7 @@
             <div id="areaCetak"></div>
             <div class="flex gap-2 mt-4 no-print">
                 <button onclick="cetakStruk()" class="flex-1 bg-blue-600 text-white py-2 rounded text-xs font-semibold">🖨️ Cetak</button>
-                <button onclick="bagikanWA()" class="flex-1 bg-green-600 text-white py-2 rounded text-xs font-semibold">📲 Kirim WA</button>
+                <button onclick="bagikanWA()" id="btnWA" class="flex-1 bg-green-600 text-white py-2 rounded text-xs font-semibold">📲 Kirim WA</button>
             </div>
             <button onclick="tutupStruk()" class="w-full mt-2 bg-gray-500 text-white py-1.5 rounded text-xs no-print">❌ Tutup</button>
         </div>
@@ -144,7 +146,6 @@ function initApp() {
     tarikDataDariSheets();
 }
 
-// METODE JSONP (Menembus Hambatan CORS Browser)
 function tarikDataDariSheets() {
     if (!URL_GOOGLE_SHEETS) return;
     
@@ -154,11 +155,9 @@ function tarikDataDariSheets() {
         statusEl.classList.remove('hidden');
     }
 
-    // Hapus script JSONP lama jika ada
     const scriptLama = document.getElementById('jsonpScript');
     if (scriptLama) scriptLama.remove();
 
-    // Buat script baru untuk dipasang ke DOM
     const script = document.createElement('script');
     script.id = 'jsonpScript';
     script.src = `${URL_GOOGLE_SHEETS}?callback=prosesDataDariSheets&t=${Date.now()}`;
@@ -171,7 +170,6 @@ function tarikDataDariSheets() {
     document.body.appendChild(script);
 }
 
-// Callback otomatis saat JSONP selesai di-load
 function prosesDataDariSheets(res) {
     const statusEl = document.getElementById('statusProses');
     if (res && res.status === 'success' && Array.isArray(res.data)) {
@@ -480,7 +478,7 @@ function bukaStruk(id) {
     }
 
     document.getElementById('areaCetak').innerHTML = `
-        <div class="struk">
+        <div class="struk" id="strukFisik">
             <div class="judul-toko">MF.EV SERVICE</div>
             <div class="sub-judul">Pangkalpinang, Bangka Belitung</div>
             <div class="garis"></div>
@@ -512,36 +510,71 @@ function cetakStruk() {
     window.print(); 
 }
 
-function bagikanWA() {
+// FUNGSI SHARE DENGAN GAMBAR STRUK DI SERTAKAN KETIKA BAGIKAN KE WA
+async function bagikanWA() {
     if (!dataTerpilih) return alert('Data tidak ditemukan!');
     
-    let rincianTeks = '';
-    if (dataTerpilih.daftarPekerjaan && Array.isArray(dataTerpilih.daftarPekerjaan)) {
-        dataTerpilih.daftarPekerjaan.forEach(p => {
-            if(p.nama) rincianTeks += `• ${p.nama} : Rp ${(p.biaya || 0).toLocaleString('id-ID')}\n`;
-        });
-    }
+    const btn = document.getElementById('btnWA');
+    btn.textContent = "⏳ Memproses...";
+    btn.disabled = true;
 
-    const pesan = `*STRUK SERVIS MF.EV SERVICE*
-📅 Tanggal : ${ubahFormatTanggal(dataTerpilih.tgl)}
-👤 Pelanggan : ${dataTerpilih.nama}
-📞 No HP : ${dataTerpilih.nohp}
-🏍️ Motor : ${dataTerpilih.merk||'-'} ${dataTerpilih.tipe||''}
-🚘 No Plat : ${dataTerpilih.plat||'-'}
-📏 Kilometer : ${dataTerpilih.kilometer ? dataTerpilih.kilometer+' Km' : '-'}
+    try {
+        const elemStruk = document.getElementById('strukFisik');
+        const canvas = await html2canvas(elemStruk, { scale: 2 });
+        
+        // Buat file Blob dari canvas
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const file = new File([blob], `Struk-${dataTerpilih.nama}.png`, { type: 'image/png' });
 
-*RINCIAN PEKERJAAN:*
+        let rincianTeks = '';
+        if (dataTerpilih.daftarPekerjaan && Array.isArray(dataTerpilih.daftarPekerjaan)) {
+            dataTerpilih.daftarPekerjaan.forEach(p => {
+                if(p.nama) rincianTeks += `• ${p.nama} : Rp ${(p.biaya || 0).toLocaleString('id-ID')}\n`;
+            });
+        }
+
+        const pesan = `STRUK SERVIS MF.EV SERVICE
+📅 Tanggal: ${ubahFormatTanggal(dataTerpilih.tgl)}
+👤 Nama: ${dataTerpilih.nama}
+🏍️ Motor: ${dataTerpilih.merk||'-'} ${dataTerpilih.tipe||''}
+🚘 No Plat: ${dataTerpilih.plat||'-'}
+📏 Kilometer: ${dataTerpilih.kilometer ? dataTerpilih.kilometer+' Km' : '-'}
+
+📝 Rincian:
 ${rincianTeks}
-*TOTAL BIAYA:* Rp ${(dataTerpilih.total || 0).toLocaleString('id-ID')}
-*CATATAN:* ${dataTerpilih.catatan || '-'}
+💰 Total: Rp ${(dataTerpilih.total || 0).toLocaleString('id-ID')}
+📄 CATATAN: ${dataTerpilih.catatan || '-'}
 
-_Terima Kasih Telah Servis di MF.EV Service!_`;
+Terima kasih sudah berkunjung!`;
 
-    let hp = String(dataTerpilih.nohp).replace(/\D/g, '');
-    if (hp.startsWith('0')) hp = '62' + hp.slice(1);
+        // Gunakan Web Share API jika didukung oleh browser HP
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: 'Struk Servis MF.EV',
+                text: pesan
+            });
+        } else {
+            // Fallback untuk browser yang tidak mendukung Web Share File
+            const a = document.createElement("a");
+            a.href = canvas.toDataURL("image/png");
+            a.download = `Struk-${dataTerpilih.nama}.png`;
+            a.click();
 
-    const urlWA = `https://api.whatsapp.com/send?phone=${hp}&text=${encodeURIComponent(pesan)}`;
-    window.open(urlWA, '_blank');
+            let hp = String(dataTerpilih.nohp).replace(/\D/g, '');
+            if (hp.startsWith('0')) hp = '62' + hp.slice(1);
+            const urlWA = `https://api.whatsapp.com/send?phone=${hp}&text=${encodeURIComponent(pesan)}`;
+
+            alert("📷 Gambar Struk berhasil diunduh otomatis!\nSilakan buka WA & lampirkan gambar struknya.");
+            window.open(urlWA, '_blank');
+        }
+    } catch (err) {
+        console.error("Gagal membagikan:", err);
+        alert("Gagal memproses gambar struk.");
+    } finally {
+        btn.textContent = "📲 Kirim WA";
+        btn.disabled = false;
+    }
 }
 </script>
 </body>
