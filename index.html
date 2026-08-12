@@ -40,7 +40,7 @@
     <div class="bg-green-800 text-white text-center text-xl font-bold py-4 rounded mb-3 no-print">MF.EV Service Manager</div>
     
     <div class="info-sinkron no-print flex items-center justify-between">
-        <span>✅ Data tersimpan di HP & Google Sheets</span>
+        <span>☁️ Data Tersambung ke Google Sheets</span>
         <span id="statusProses" class="text-xs font-semibold text-amber-700 hidden">⏳ Mengambil data...</span>
     </div>
 
@@ -48,7 +48,7 @@
     <div class="bg-white p-4 rounded shadow mb-4 no-print">
         <h3 class="text-lg font-semibold mb-3 text-gray-800" id="judulForm">Tambah Riwayat Servis</h3>
         <div class="space-y-3">
-            <input type="hidden" id="editId">
+            <input type="hidden" id="editRowId">
             <div>
                 <label class="text-xs font-semibold text-gray-600">Tanggal Servis</label>
                 <input type="date" id="tanggal" class="w-full p-2 border rounded text-sm mt-1">
@@ -85,7 +85,7 @@
         </div>
     </div>
 
-    <!-- BLOK CADANGAN & PEMULIHAN DATA (PINDAH KE BAWAH FORM SERVIS & DI ATAS RIWAYAT) -->
+    <!-- BLOK CADANGAN & PEMULIHAN DATA -->
     <div class="bg-amber-50 p-3 rounded mb-4 text-sm no-print border border-amber-200">
         <div class="font-semibold mb-2 text-amber-900">📂 Cadangan & Pemulihan Data</div>
         <div class="flex gap-2 flex-wrap">
@@ -128,6 +128,7 @@
         </div>
     </div>
 
+    <!-- MODAL STRUK -->
     <div id="modalStruk">
         <div class="isi-modal">
             <div id="areaCetak"></div>
@@ -145,7 +146,6 @@ let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
 function initApp() {
     resetForm();
-    tampilData();
     tarikDataDariSheets();
 }
 
@@ -175,16 +175,64 @@ function tarikDataDariSheets() {
 
 function prosesDataDariSheets(res) {
     const statusEl = document.getElementById('statusProses');
-    if (res && res.status === 'success' && Array.isArray(res.data)) {
-        if (res.data.length > 0) {
-            simpanKeStorage(res.data);
-            tampilData();
-        }
+    let rawList = [];
+    
+    if (Array.isArray(res)) {
+        rawList = res;
+    } else if (res && res.data && Array.isArray(res.data)) {
+        rawList = res.data;
+    }
+
+    if (rawList.length > 0) {
+        // Konversi format Google Sheets ke struktur objek JavaScript
+        const formatted = rawList.map((item, idx) => {
+            const pekerjaanArr = [];
+            if (item.RincianPekerjaan || item.rincian) {
+                const str = item.RincianPekerjaan || item.rincian;
+                str.split(' | ').forEach(p => {
+                    const parts = p.split(': Rp ');
+                    if (parts.length === 2) {
+                        pekerjaanArr.push({ nama: parts[0].trim(), biaya: parseInt(parts[1].replace(/\D/g, '')) || 0 });
+                    } else if (p.trim()) {
+                        pekerjaanArr.push({ nama: p.trim(), biaya: 0 });
+                    }
+                });
+            }
+
+            const cleanTotal = item.TotalBiaya || item.total ? parseInt(String(item.TotalBiaya || item.total).replace(/\D/g, '')) || 0 : 0;
+
+            return {
+                rowId: item.rowId || (idx + 2),
+                id: item.rowId || (idx + 2),
+                tgl: formatTanggalKeISO(item.Tanggal || item.tanggal),
+                nama: item.Nama || item.nama || '',
+                nohp: item.NoHP || item.nohp || '',
+                merk: item.MerkMotor || item.merk || '',
+                tipe: item.TipeMotor || item.tipe || '',
+                plat: item.NoPlat || item.plat || '',
+                kilometer: item.Kilometer || item.kilometer || '',
+                daftarPekerjaan: pekerjaanArr,
+                total: cleanTotal,
+                catatan: item.Catatan || item.catatan || ''
+            };
+        });
+
+        simpanKeStorage(formatted);
+        tampilData();
         if (statusEl) statusEl.textContent = '✅ Data tersinkronisasi';
     } else {
         if (statusEl) statusEl.textContent = '⚠️ Data kosong / gagal dibaca';
     }
     if (statusEl) setTimeout(() => statusEl.classList.add('hidden'), 3000);
+}
+
+function formatTanggalKeISO(t) {
+    if (!t) return '';
+    if (t.includes('-')) {
+        const p = t.split('-');
+        if (p[0].length === 2 && p[2].length === 4) return `${p[2]}-${p[1]}-${p[0]}`; // DD-MM-YYYY to YYYY-MM-DD
+    }
+    return t;
 }
 
 function formatBiaya(input) { 
@@ -222,7 +270,7 @@ function hitungTotal() {
 }
 
 function resetForm() { 
-    document.getElementById('editId').value = ''; 
+    document.getElementById('editRowId').value = ''; 
     document.getElementById('judulForm').textContent = 'Tambah Riwayat Servis'; 
     document.querySelectorAll('input, textarea').forEach(e => {
         if(e.type !== 'button') e.value = '';
@@ -246,7 +294,7 @@ function simpanKeStorage(d) {
     localStorage.setItem('riwayatServis', JSON.stringify(d)); 
 }
 
-async function simpanKeSpreadsheet(data) {
+async function simpanKeSpreadsheet(data, isUpdate = false) {
     if (!URL_GOOGLE_SHEETS) return;
     
     const statusEl = document.getElementById('statusProses');
@@ -260,17 +308,19 @@ async function simpanKeSpreadsheet(data) {
         .filter(Boolean)
         .join(' | ');
 
-    const kirim = { 
-        tanggal: ubahFormatTanggal(data.tgl), 
-        nama: data.nama, 
-        nohp: data.nohp, 
-        merk: data.merk, 
-        tipe: data.tipe, 
-        plat: data.plat, 
-        kilometer: data.kilometer ? data.kilometer + ' Km' : '-', 
-        rincian: rincian, 
-        total: 'Rp ' + data.total.toLocaleString('id-ID'), 
-        catatan: data.catatan || '-' 
+    const payload = { 
+        action: isUpdate ? "update" : "insert",
+        rowId: data.rowId,
+        Tanggal: ubahFormatTanggal(data.tgl), 
+        Nama: data.nama, 
+        NoHP: data.nohp, 
+        MerkMotor: data.merk, 
+        TipeMotor: data.tipe, 
+        NoPlat: data.plat, 
+        Kilometer: data.kilometer ? (String(data.kilometer).includes('Km') ? data.kilometer : data.kilometer + ' Km') : '-', 
+        RincianPekerjaan: rincian, 
+        TotalBiaya: 'Rp ' + data.total.toLocaleString('id-ID'), 
+        Catatan: data.catatan || '-' 
     };
 
     try { 
@@ -278,7 +328,7 @@ async function simpanKeSpreadsheet(data) {
             method: 'POST', 
             mode: 'no-cors',
             headers: {'Content-Type': 'text/plain'},
-            body: JSON.stringify(kirim) 
+            body: JSON.stringify(payload) 
         }); 
         setTimeout(() => tarikDataDariSheets(), 1500);
     } catch(e) { 
@@ -292,7 +342,7 @@ async function simpanKeSpreadsheet(data) {
 }
 
 function simpanData() {
-    const editId = document.getElementById('editId').value, 
+    const editRowId = document.getElementById('editRowId').value, 
           tanggal = document.getElementById('tanggal').value, 
           nama = document.getElementById('nama').value.trim(), 
           nohp = document.getElementById('nohp').value.trim(), 
@@ -316,24 +366,18 @@ function simpanData() {
     if(pekerjaan.length === 0) return alert('Isi minimal satu pekerjaan dan biayanya!');
     
     const total = pekerjaan.reduce((s, i) => s + i.biaya, 0);
-    const daftar = ambilData();
     
-    if(editId){
-        const i = daftar.findIndex(x => x.id == editId);
-        if(i > -1){
-            daftar[i] = {...daftar[i], tgl: tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan: pekerjaan, total, catatan};
-            alert('✅ Data berhasil diperbarui!');
-        }
+    if(editRowId){
+        const editData = { rowId: parseInt(editRowId), tgl: tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan: pekerjaan, total, catatan };
+        simpanKeSpreadsheet(editData, true);
+        alert('⏳ Perubahan dikirim ke Google Sheets...');
     } else {
-        const baru = {id: Date.now(), tgl: tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan: pekerjaan, total, catatan};
-        daftar.unshift(baru);
-        simpanKeSpreadsheet(baru);
+        const baru = { rowId: null, tgl: tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan: pekerjaan, total, catatan };
+        simpanKeSpreadsheet(baru, false);
         alert('✅ Tersimpan & disinkronkan ke Google Sheets');
     }
 
-    simpanKeStorage(daftar); 
     resetForm(); 
-    tampilData();
 }
 
 function tampilData() {
@@ -372,12 +416,12 @@ function tampilData() {
             <td class="p-2 text-center whitespace-nowrap">${ubahFormatTanggal(i.tgl)}</td>
             <td class="p-2"><strong>${i.nama}</strong><br><span class="text-gray-500">${i.nohp}</span></td>
             <td class="p-2">${i.merk || '-'}<br><span class="text-gray-500">${i.tipe || '-'}</span></td>
-            <td class="p-2">${i.plat || '-'}<br><span class="text-gray-500">${i.kilometer ? i.kilometer + ' Km' : '-'}</span></td>
+            <td class="p-2">${i.plat || '-'}<br><span class="text-gray-500">${i.kilometer ? (String(i.kilometer).includes('Km') ? i.kilometer : i.kilometer + ' Km') : '-'}</span></td>
             <td class="p-2 text-right font-semibold text-green-700 whitespace-nowrap">Rp ${(i.total || 0).toLocaleString('id-ID')}</td>
             <td class="p-2 text-center whitespace-nowrap">
-                <button onclick="bukaStruk(${i.id})" class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Struk</button>
-                <button onclick="bukaEdit(${i.id})" class="bg-amber-500 text-white px-2 py-1 rounded text-xs ml-1">Edit</button>
-                <button onclick="hapusData(${i.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs ml-1">Hapus</button>
+                <button onclick="bukaStruk(${i.rowId})" class="bg-blue-600 text-white px-2 py-1 rounded text-xs">Struk</button>
+                <button onclick="bukaEdit(${i.rowId})" class="bg-amber-500 text-white px-2 py-1 rounded text-xs ml-1">Edit</button>
+                <button onclick="hapusData(${i.rowId})" class="bg-red-500 text-white px-2 py-1 rounded text-xs ml-1">Hapus</button>
             </td>
         </tr>
     `).join('') : `<tr><td colspan="6" class="p-4 text-center text-gray-500">Data tidak ditemukan</td></tr>`;
@@ -435,19 +479,19 @@ function imporData(e) {
     r.readAsText(file); 
 }
 
-function bukaEdit(id) { 
-    const d = ambilData().find(x => x.id == id); 
+function bukaEdit(rowId) { 
+    const d = ambilData().find(x => x.rowId == rowId); 
     if(!d) return alert('Data tidak ditemukan!');
     
-    document.getElementById('editId').value = id; 
-    document.getElementById('judulForm').textContent = 'Edit Riwayat Servis';
+    document.getElementById('editRowId').value = rowId; 
+    document.getElementById('judulForm').textContent = 'Edit Riwayat Servis (Baris ' + rowId + ')';
     document.getElementById('tanggal').value = d.tgl; 
     document.getElementById('nama').value = d.nama;
     document.getElementById('nohp').value = d.nohp; 
     document.getElementById('merk').value = d.merk || '';
     document.getElementById('tipe').value = d.tipe || ''; 
     document.getElementById('plat').value = d.plat || '';
-    document.getElementById('kilometer').value = d.kilometer || ''; 
+    document.getElementById('kilometer').value = String(d.kilometer || '').replace(/\D/g, ''); 
     document.getElementById('catatan').value = d.catatan || '';
 
     for(let i = 1; i <= 5; i++){
@@ -460,15 +504,15 @@ function bukaEdit(id) {
     window.scrollTo({top: 0, behavior: 'smooth'}); 
 }
 
-function hapusData(id) { 
-    if(confirm('Yakin ingin menghapus data ini dari penyimpanan lokal?')){
-        simpanKeStorage(ambilData().filter(x => x.id != id)); 
+function hapusData(rowId) { 
+    if(confirm('Hapus tampilan lokal ini? (Data di Google Sheets tetap tersimpan aman)')){
+        simpanKeStorage(ambilData().filter(x => x.rowId != rowId)); 
         tampilData();
     } 
 }
 
-function bukaStruk(id) { 
-    dataTerpilih = ambilData().find(x => x.id == id); 
+function bukaStruk(rowId) { 
+    dataTerpilih = ambilData().find(x => x.rowId == rowId); 
     if(!dataTerpilih) return;
     
     let r = '';
@@ -490,7 +534,7 @@ function bukaStruk(id) {
             <div class="baris-struk"><span class="label-struk">No HP</span><span>: ${dataTerpilih.nohp}</span></div>
             <div class="baris-struk"><span class="label-struk">Merk / Tipe</span><span>: ${dataTerpilih.merk||'-'} ${dataTerpilih.tipe||''}</span></div>
             <div class="baris-struk"><span class="label-struk">No Plat</span><span>: ${dataTerpilih.plat||'-'}</span></div>
-            <div class="baris-struk"><span class="label-struk">KM Motor</span><span>: ${dataTerpilih.kilometer ? dataTerpilih.kilometer+' Km' : '-'}</span></div>
+            <div class="baris-struk"><span class="label-struk">KM Motor</span><span>: ${dataTerpilih.kilometer ? (String(dataTerpilih.kilometer).includes('Km') ? dataTerpilih.kilometer : dataTerpilih.kilometer+' Km') : '-'}</span></div>
             <div class="garis"></div>
             <div class="tebal">RINCIAN PEKERJAAN:</div>
             ${r}
@@ -499,7 +543,6 @@ function bukaStruk(id) {
             <div class="garis"></div>
             ${dataTerpilih.catatan ? `<div class="tebal">CATATAN:</div><div>${dataTerpilih.catatan}</div><div class="garis"></div>` : ''}
             <div class="tengah">Terima Kasih</div>
-            <!-- DENGAN PERUBAHAN TEKS FOOTER DI BAWAH INI -->
             <div class="tengah">Semoga Kendaraan Anda Awet :-)</div>
         </div>
     `;
@@ -540,7 +583,7 @@ async function bagikanWA() {
 👤 Nama: ${dataTerpilih.nama}
 🏍️ Motor: ${dataTerpilih.merk||'-'} ${dataTerpilih.tipe||''}
 🚘 No Plat: ${dataTerpilih.plat||'-'}
-📏 Kilometer: ${dataTerpilih.kilometer ? dataTerpilih.kilometer+' Km' : '-'}
+📏 Kilometer: ${dataTerpilih.kilometer ? (String(dataTerpilih.kilometer).includes('Km') ? dataTerpilih.kilometer : dataTerpilih.kilometer+' Km') : '-'}
 
 📝 Rincian:
 ${rincianTeks}
