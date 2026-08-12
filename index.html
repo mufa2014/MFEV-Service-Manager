@@ -38,7 +38,7 @@
     <div class="bg-green-800 text-white text-center text-xl font-bold py-4 rounded mb-3 no-print">MF.EV Service Manager</div>
     
     <div class="info-sinkron no-print flex items-center justify-between">
-        <span id="labelKoneksi">☁️ Connecting to Google Sheets...</span>
+        <span id="labelKoneksi">⏳ Menghubungkan ke Google Sheets...</span>
         <span id="statusProses" class="text-xs font-semibold text-amber-700 hidden">⏳ Loading...</span>
     </div>
 
@@ -163,11 +163,9 @@ function tarikDataDariSheets() {
     script.id = 'jsonpScript';
     script.src = `${URL_GOOGLE_SHEETS}?callback=prosesDataDariSheets&t=${Date.now()}`;
     script.onerror = function() {
-        if (statusEl) {
-            document.getElementById('labelKoneksi').textContent = '❌ Gagal terhubung ke Google Sheets';
-            document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-red-700';
-            statusEl.classList.add('hidden');
-        }
+        document.getElementById('labelKoneksi').textContent = '❌ Gagal terhubung ke Google Sheets';
+        document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-red-700';
+        if (statusEl) statusEl.classList.add('hidden');
     };
     document.body.appendChild(script);
 }
@@ -222,6 +220,7 @@ function prosesDataDariSheets(res) {
         document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-green-700';
     } else {
         document.getElementById('labelKoneksi').textContent = '⚠️ Data Google Sheets Kosong';
+        document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-amber-700';
     }
     if (statusEl) statusEl.classList.add('hidden');
 }
