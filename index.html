@@ -154,7 +154,7 @@ function tarikDataDariSheets() {
     
     const statusEl = document.getElementById('statusProses');
     if (statusEl) {
-        statusEl.textContent = '⏳ Mengambil data dari Google Sheets...';
+        statusEl.textContent = '⏳ Mengambil data...';
         statusEl.classList.remove('hidden');
     }
 
@@ -184,12 +184,11 @@ function prosesDataDariSheets(res) {
     }
 
     if (rawList.length > 0) {
-        // Konversi format Google Sheets ke struktur objek JavaScript
         const formatted = rawList.map((item, idx) => {
             const pekerjaanArr = [];
-            if (item.RincianPekerjaan || item.rincian) {
-                const str = item.RincianPekerjaan || item.rincian;
-                str.split(' | ').forEach(p => {
+            const rincianStr = item.RincianPekerjaan || item.rincian || '';
+            if (rincianStr) {
+                rincianStr.split(' | ').forEach(p => {
                     const parts = p.split(': Rp ');
                     if (parts.length === 2) {
                         pekerjaanArr.push({ nama: parts[0].trim(), biaya: parseInt(parts[1].replace(/\D/g, '')) || 0 });
@@ -199,14 +198,15 @@ function prosesDataDariSheets(res) {
                 });
             }
 
-            const cleanTotal = item.TotalBiaya || item.total ? parseInt(String(item.TotalBiaya || item.total).replace(/\D/g, '')) || 0 : 0;
+            const rawTotal = item.TotalBiaya || item.total || 0;
+            const cleanTotal = typeof rawTotal === 'number' ? rawTotal : parseInt(String(rawTotal).replace(/\D/g, '')) || 0;
 
             return {
                 rowId: item.rowId || (idx + 2),
                 id: item.rowId || (idx + 2),
                 tgl: formatTanggalKeISO(item.Tanggal || item.tanggal),
                 nama: item.Nama || item.nama || '',
-                nohp: item.NoHP || item.nohp || '',
+                nohp: String(item.NoHP || item.nohp || ''),
                 merk: item.MerkMotor || item.merk || '',
                 tipe: item.TipeMotor || item.tipe || '',
                 plat: item.NoPlat || item.plat || '',
@@ -221,16 +221,17 @@ function prosesDataDariSheets(res) {
         tampilData();
         if (statusEl) statusEl.textContent = '✅ Data tersinkronisasi';
     } else {
-        if (statusEl) statusEl.textContent = '⚠️ Data kosong / gagal dibaca';
+        if (statusEl) statusEl.textContent = '⚠️ Data kosong';
     }
     if (statusEl) setTimeout(() => statusEl.classList.add('hidden'), 3000);
 }
 
 function formatTanggalKeISO(t) {
     if (!t) return '';
+    if (typeof t !== 'string') t = String(t);
     if (t.includes('-')) {
         const p = t.split('-');
-        if (p[0].length === 2 && p[2].length === 4) return `${p[2]}-${p[1]}-${p[0]}`; // DD-MM-YYYY to YYYY-MM-DD
+        if (p[0].length === 2 && p[2].length === 4) return `${p[2]}-${p[1]}-${p[0]}`; // DD-MM-YYYY ke YYYY-MM-DD
     }
     return t;
 }
@@ -285,7 +286,7 @@ function ambilData() {
         if (!d) return [];
         return JSON.parse(d);
     } catch (err) {
-        console.error('Gagal membaca data:', err);
+        console.error('Gagal membaca storage:', err);
         return [];
     }
 }
@@ -332,10 +333,10 @@ async function simpanKeSpreadsheet(data, isUpdate = false) {
         }); 
         setTimeout(() => tarikDataDariSheets(), 1500);
     } catch(e) { 
-        console.warn('Gagal menyimpan ke Google Sheets.', e); 
+        console.warn('Gagal sinkronisasi Sheets.', e); 
     } finally {
         if(statusEl) {
-            statusEl.textContent = '✅ Tersimpan';
+            statusEl.textContent = '✅ Berhasil disimpan';
             setTimeout(() => statusEl.classList.add('hidden'), 3000);
         }
     }
@@ -363,7 +364,7 @@ function simpanData() {
         if(n || b > 0) pekerjaan.push({nama: n, biaya: b});
     }
 
-    if(pekerjaan.length === 0) return alert('Isi minimal satu pekerjaan dan biayanya!');
+    if(pekerjaan.length === 0) return alert('Isi minimal satu pekerjaan/biaya!');
     
     const total = pekerjaan.reduce((s, i) => s + i.biaya, 0);
     
@@ -374,7 +375,7 @@ function simpanData() {
     } else {
         const baru = { rowId: null, tgl: tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan: pekerjaan, total, catatan };
         simpanKeSpreadsheet(baru, false);
-        alert('✅ Tersimpan & disinkronkan ke Google Sheets');
+        alert('✅ Data baru terkirim ke Google Sheets');
     }
 
     resetForm(); 
@@ -459,7 +460,7 @@ function eksporData() {
 function imporData(e) { 
     const file = e.target.files[0];
     if(!file) return;
-    if(!confirm('Ganti data lama dengan data dari cadangan?')) return;
+    if(!confirm('Ganti data lokal dengan cadangan JSON ini?')) return;
     
     const r = new FileReader();
     r.onload = ev => {
@@ -468,12 +469,12 @@ function imporData(e) {
             if(Array.isArray(parsed)) {
                 simpanKeStorage(parsed); 
                 tampilData(); 
-                alert('✅ Data berhasil dipulihkan!');
+                alert('✅ Data lokal diperbarui!');
             } else {
-                alert('❌ Format file tidak cocok.');
+                alert('❌ Format JSON salah.');
             }
         } catch {
-            alert('❌ File tidak valid.');
+            alert('❌ Gagal membaca file JSON.');
         }
     };
     r.readAsText(file); 
@@ -505,7 +506,7 @@ function bukaEdit(rowId) {
 }
 
 function hapusData(rowId) { 
-    if(confirm('Hapus tampilan lokal ini? (Data di Google Sheets tetap tersimpan aman)')){
+    if(confirm('Hapus baris ini dari daftar lokal? (Data di Google Sheets utama tidak akan hilang)')){
         simpanKeStorage(ambilData().filter(x => x.rowId != rowId)); 
         tampilData();
     } 
@@ -608,7 +609,7 @@ Terima kasih telah servis di MF.EV Service!`;
             if (hp.startsWith('0')) hp = '62' + hp.slice(1);
             const urlWA = `https://api.whatsapp.com/send?phone=${hp}&text=${encodeURIComponent(pesan)}`;
 
-            alert("📷 Gambar Struk telah terunduh otomatis!\nSilakan buka WA & lampirkan gambar struknya.");
+            alert("📷 Struk terunduh otomatis!\nBuka WA & lampirkan gambar struknya.");
             window.open(urlWA, '_blank');
         }
     } catch (err) {
