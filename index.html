@@ -32,15 +32,15 @@
         .input-kerja { flex: 2; }
         .info-sinkron { font-size: 12px; color: #166534; background: #dcfce7; padding: 6px 12px; border-radius: 4px; margin-bottom: 12px; }
         .header-brand { display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .logo-header { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; background: white; padding: 2px; }
+        .logo-header { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: white; padding: 2px; }
     </style>
 </head>
 <body class="bg-gray-100 max-w-xl mx-auto p-3" onload="initApp()">
 
-    <!-- HEADER DENGAN LOGO -->
+    <!-- HEADER DENGAN LOGO LOKAL -->
     <div class="bg-green-800 text-white py-3 rounded mb-3 no-print">
         <div class="header-brand">
-            <img src="https://picsum.photos/id/0/200/200" alt="MF.EV Logo" class="logo-header" id="logoMFev">
+            <img src="logo-mfev.png" alt="MF.EV Logo" class="logo-header" id="logoMFev">
             <span class="text-xl font-bold">MF.EV Service Manager</span>
         </div>
     </div>
@@ -147,11 +147,8 @@
     </div>
 
 <script>
-// === PASANG LOGO MF.EV ===
-// Cara paling mudah: upload logo ke imgur / upload gambar ke hosting gratis, lalu tempel link di bawah
-// Atau simpan logo-mfev.png di folder yang sama dengan file HTML, lalu ganti link menjadi: src="logo-mfev.png"
-const LOGO_URL = "https://i.imgur.com/KZxXQfL.png"; // ← Link logo MF.EV, sudah diupload aman
-document.getElementById('logoMFev').src = LOGO_URL;
+// === LINK LOGO LOKAL ===
+const LOGO_URL = "logo-mfev.png"; // ← Ambil dari file yang ada di folder yang sama
 
 // ✅ LINK API GOOGLE SHEETS KAMU
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzDfnxXV81zCcSH50o48ainKbCt7s1vQ_lD1KCqPUSQFArX5ws5qZrNMCqZ0z35SQ0WNg/exec";
