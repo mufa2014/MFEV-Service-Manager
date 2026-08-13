@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MF.EV Service — Pengingat Servis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-lewat { background: #fee2e2; border-left: 4px solid #dc2626; }
+        .status-segera { background: #fef3c7; border-left: 4px solid #f59e0b; }
+        .status-baik { background: #dcfce7; border-left: 4px solid #22c55e; }
+        .sudah-dihubungi { opacity: 0.6; text-decoration: line-through; }
+    </style>
+</head>
+<body class="bg-gray-100 max-w-xl mx-auto p-3" onload="initApp()">
+
+    <div class="bg-green-800 text-white py-3 rounded mb-3">
+        <div class="flex items-center justify-center gap-3">
+            <img src="logo-mfev.png" alt="MF.EV Logo" class="w-10 h-10 rounded-full bg-white p-1">
+            <h1 class="text-xl font-bold">🔔 Pengingat Servis Berkala</h1>
+        </div>
+    </div>
+
+    <a href="index.html" class="inline-block mb-4 px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">← Kembali ke Halaman Utama</a>
+
+    <div class="bg-white p-4 rounded shadow mb-4">
+        <div class="text-sm text-gray-600 mb-4">
+            <span class="text-red-600 font-semibold">🔴 Merah = Sudah lewat</span> &nbsp;|&nbsp;
+            <span class="text-amber-600 font-semibold">🟡 Kuning = ≤7 hari lagi</span> &nbsp;|&nbsp;
+            <span class="text-green-600 font-semibold">🟢 Hijau = Aman</span>
+        </div>
+        <div class="mb-3">
+            <button onclick="tarikDataDariSheets()" id="btnMuat" class="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700">🔄 Muat Ulang dari Sheets</button>
+            <span id="statusInfo" class="ml-2 text-sm text-gray-500"></span>
+        </div>
+        <div id="daftarPengingat"></div>
+    </div>
+
+<script>
+// === PENTING: SAMA PERSIS DENGAN URL DI index.html ===
+const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzDfnxXV81zCcSH50o48ainKbCt7s1vQ_lD1KCqPUSQFArX5ws5qZrNMCqZ0z35SQ0WNg/exec";
+let daftarData = [];
+
+function initApp() {
+    tarikDataDariSheets();
+}
+
+function formatTanggalKeISO(t) {
+    if (!t) return '';
+    let s = String(t).replace(/T.*/,'').trim();
+    if (s.includes('-')) {
+        const p = s.split('-');
+        if (p[0].length===2 && p[2].length===4) return `${p[2]}-${p[1]}-${p[0]}`;
+        return s;
+    }
+    return s;
+}
+
+function ubahFormatTanggal(t) {
+    if (!t) return '';
+    let s = String(t).replace(/T.*/,'').trim();
+    if (s.includes('-')) {
+        const p = s.split('-');
+        if (p[0].length===4) return `${p[2]}-${p[1]}-${p[0]}`;
+        return s;
+    }
+    return s;
+}
+
+function tarikDataDariSheets() {
+    document.getElementById('btnMuat').disabled = true;
+    document.getElementById('statusInfo').textContent = '⏳ Mengambil data...';
+
+    const scriptLama = document.getElementById('jsonpScript');
+    if (scriptLama) scriptLama.remove();
+
+    window.prosesDataPengingat = function(res) {
+        document.getElementById('btnMuat').disabled = false;
+        let rawList = [];
+        if (Array.isArray(res)) rawList = res;
+        else if (res && res.data && Array.isArray(res.data)) rawList = res.data;
+        else if (res && res.status === "berhasil") {
+            document.getElementById('statusInfo').textContent = '✅ Sheets terhubung, data belum ada';
+            tampilkanPengingat([]);
+            return;
+        }
+        if (rawList.length > 0) {
+            daftarData = rawList.map((item, idx) => ({
+                rowId: item.rowId || (idx+2),
+                nama: item.Nama || item.nama || '',
+                nohp: String(item.NoHP || item.nohp || ''),
+                merk: item.MerkMotor || item.merk || '',
+                tipe: item.TipeMotor || item.tipe || '',
+                plat: item.NoPlat || item.plat || '',
+                tglBerikutnya: formatTanggalKeISO(item.TanggalBerikutnya || item.tglBerikutnya || ''),
+                sudahDihubungi: item.SudahDihubungi || item.sudahDihubungi || false
+            }));
+            tampilkanPengingat(daftarData);
+            document.getElementById('statusInfo').textContent = `✅ ${daftarData.length} data dimuat`;
+        } else {
+            document.getElementById('statusInfo').textContent = '⚠️ Data kosong';
+            tampilkanPengingat([]);
+        }
+    };
+
+    const script = document.createElement('script');
+    script.id = 'jsonpScript';
+    script.src = `${URL_GOOGLE_SHEETS}?callback=prosesDataPengingat&t=${Date.now()}`;
+    script.onerror = function() {
+        document.getElementById('btnMuat').disabled = false;
+        document.getElementById('statusInfo').textContent = '❌ Gagal terhubung';
+    };
+    document.body.appendChild(script);
+}
+
+function tampilkanPengingat(data) {
+    const wadah = document.getElementById('daftarPengingat');
+    const hariIni = new Date(); hariIni.setHours(0,0,0,0);
+    const BATAS_HARI = 7;
+
+    const daftarFilter = data.filter(item => item.tglBerikutnya);
+    daftarFilter.sort((a,b) => new Date(a.tglBerikutnya) - new Date(b.tglBerikutnya));
+
+    if (daftarFilter.length === 0) {
+        wadah.innerHTML = '<div class="text-gray-500 italic">Belum ada data servis berikutnya.</div>';
+        return;
+    }
+
+    wadah.innerHTML = daftarFilter.map(item => {
+        const tgl = new Date(item.tglBerikutnya);
+        tgl.setHours(0,0,0,0);
+        const selisih = Math.ceil((tgl - hariIni) / (1000*60*60*24));
+
+        let kelas, teks;
+        if (selisih < 0) {
+            kelas = 'status-lewat';
+            teks = `🔴 Sudah lewat ${Math.abs(selisih)} hari`;
+        } else if (selisih <= BATAS_HARI) {
+            kelas = 'status-segera';
+            teks = `🟡 Segera (${selisih} hari lagi)`;
+        } else {
+            kelas = 'status-baik';
+            teks = `🟢 Aman (${selisih} hari lagi)`;
+        }
+
+        return `
+        <div class="p-3 mb-3 rounded ${kelas} ${item.sudahDihubungi?'sudah-dihubungi':''}">
+            <div class="font-semibold">${item.nama}</div>
+            <div class="text-sm text-gray-700">${item.merk} ${item.tipe||''} — Plat: ${item.plat}</div>
+            <div class="text-sm mt-1">📅 Servis: ${ubahFormatTanggal(item.tglBerikutnya)}</div>
+            <div class="text-sm font-medium mt-1">${teks}</div>
+            ${!item.sudahDihubungi ? `
+            <div class="mt-2 flex gap-2">
+                <button onclick="kirimWA('${item.rowId}','${item.nama}','${item.merk}','${item.tipe}','${item.plat}','${item.nohp}','${ubahFormatTanggal(item.tglBerikutnya)}')" 
+                    class="bg-green-600 text-white px-3 py-1 rounded text-sm">📲 Kirim WA</button>
+                <button onclick="tandaiSudah('${item.rowId}')" 
+                    class="bg-gray-600 text-white px-3 py-1 rounded text-sm">✅ Sudah Dihubungi</button>
+            </div>` : '<div class="mt-2 text-sm text-gray-500">✅ Sudah dicek</div>'}
+        </div>`;
+    }).join('');
+}
+
+function kirimWA(rowId, nama, merk, tipe, plat, nohp, tgl) {
+    let hp = String(nohp).replace(/\D/g, '');
+    if (hp.startsWith('0')) hp = '62' + hp.slice(1);
+
+    const pesan = `Assalamualaikum Bapak/Ibu ${nama} 🙏
+
+Dari MF.EV Service, kami mengingatkan bahwa kendaraan Bapak/Ibu (${merk} ${tipe||''}, No. Plat ${plat}) dijadwalkan untuk servis berkala pada tanggal ${tgl}.
+
+Semoga kabar Bapak/Ibu sehat selalu. Silakan mampir kapan saja ya. Terima kasih 🙏
+
+— MF.EV Service
+Pangkalpinang, Bangka Belitung`;
+
+    const urlWA = `https://api.whatsapp.com/send?app=wa&phone=${hp}&text=${encodeURIComponent(pesan)}`;
+    window.open(urlWA, '_blank');
+}
+
+async function tandaiSudah(rowId) {
+    if (!confirm('Tandai sudah dihubungi?')) return;
+    const payload = {
+        action: "tandaiSudahDihubungi",
+        rowId: rowId
+    };
+    try {
+        await fetch(URL_GOOGLE_SHEETS, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        alert('✅ Ditandai sudah dihubungi!');
+        tarikDataDariSheets();
+    } catch (e) {
+        alert('⚠️ Tersimpan lokal saja. Silakan muat ulang nanti.');
+        daftarData = daftarData.map(d => String(d.rowId) === String(rowId) ? {...d, sudahDihubungi: true} : d);
+        tampilkanPengingat(daftarData);
+    }
+}
+</script>
+</body>
+</html>
