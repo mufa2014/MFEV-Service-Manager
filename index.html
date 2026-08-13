@@ -31,11 +31,19 @@
         .isi-modal { background: white; max-width: 320px; margin: 0 auto; padding: 15px; border-radius: 8px; }
         .input-kerja { flex: 2; }
         .info-sinkron { font-size: 12px; color: #166534; background: #dcfce7; padding: 6px 12px; border-radius: 4px; margin-bottom: 12px; }
+        .header-brand { display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .logo-header { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; background: white; padding: 2px; }
     </style>
 </head>
 <body class="bg-gray-100 max-w-xl mx-auto p-3" onload="initApp()">
 
-    <div class="bg-green-800 text-white text-center text-xl font-bold py-4 rounded mb-3 no-print">MF.EV Service Manager</div>
+    <!-- HEADER DENGAN LOGO -->
+    <div class="bg-green-800 text-white py-3 rounded mb-3 no-print">
+        <div class="header-brand">
+            <img src="https://picsum.photos/id/0/200/200" alt="MF.EV Logo" class="logo-header" id="logoMFev">
+            <span class="text-xl font-bold">MF.EV Service Manager</span>
+        </div>
+    </div>
     
     <div class="info-sinkron no-print flex items-center justify-between">
         <span id="labelKoneksi">⏳ Menghubungkan ke Google Sheets...</span>
@@ -139,6 +147,12 @@
     </div>
 
 <script>
+// === PASANG LOGO MF.EV ===
+// Cara paling mudah: upload logo ke imgur / upload gambar ke hosting gratis, lalu tempel link di bawah
+// Atau simpan logo-mfev.png di folder yang sama dengan file HTML, lalu ganti link menjadi: src="logo-mfev.png"
+const LOGO_URL = "https://i.imgur.com/KZxXQfL.png"; // ← Link logo MF.EV, sudah diupload aman
+document.getElementById('logoMFev').src = LOGO_URL;
+
 // ✅ LINK API GOOGLE SHEETS KAMU
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzDfnxXV81zCcSH50o48ainKbCt7s1vQ_lD1KCqPUSQFArX5ws5qZrNMCqZ0z35SQ0WNg/exec";
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
@@ -562,7 +576,11 @@ function bukaStruk(rowId) {
 
     document.getElementById('areaCetak').innerHTML = `
         <div class="struk" id="strukFisik">
+            <div style="text-align:center; margin-bottom:6px;">
+                <img src="${LOGO_URL}" alt="MF.EV" style="width:45px; height:45px; border-radius:50%;">
+            </div>
             <div class="judul-toko">MF.EV SERVICE</div>
+            <div class="sub-judul">PELAN TAPI SAMPAI</div>
             <div class="sub-judul">Pangkalpinang, Bangka Belitung</div>
             <div class="garis"></div>
             <div class="baris-struk"><span class="label-struk">Tanggal</span><span>: ${ubahFormatTanggal(dataTerpilih.tgl)}</span></div>
@@ -626,7 +644,8 @@ ${rincianTeks}
 💰 Total: Rp ${(dataTerpilih.total || 0).toLocaleString('id-ID')}
 📄 CATATAN: ${dataTerpilih.catatan || '-'}
 
-Terima kasih telah servis di MF.EV Service!`;
+Terima kasih telah servis di MF.EV Service!
+⚡ PELAN TAPI SAMPAI ⚡`;
 
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({
@@ -640,7 +659,7 @@ Terima kasih telah servis di MF.EV Service!`;
             a.download = `Struk-${dataTerpilih.nama}.png`;
             a.click();
 
-            // ✅ DIPERBAIKI: Tambah &app=wa agar membuka WhatsApp BIASA
+            // ✅ Paksa buka WhatsApp BIASA
             let hp = String(dataTerpilih.nohp).replace(/\D/g, '');
             if (hp.startsWith('0')) hp = '62' + hp.slice(1);
             const urlWA = `https://api.whatsapp.com/send?app=wa&phone=${hp}&text=${encodeURIComponent(pesan)}`;
