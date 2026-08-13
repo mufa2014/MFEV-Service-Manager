@@ -31,14 +31,13 @@
             align-items: center;
             justify-content: center;
             gap: 12px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
         .logo-struk {
             width: 45px;
             height: 45px;
             border-radius: 50%;
             object-fit: contain;
-            /* HITAM PUTIH OTOMATIS */
             filter: grayscale(100%) contrast(1.2) brightness(0.95);
         }
         .judul-struk-group {
@@ -55,7 +54,7 @@
         .sub-judul { 
             font-size: 10px; 
             text-align: center; 
-            margin-bottom: 2px; 
+            margin-bottom: 4px; 
         }
         .garis { 
             border-bottom: 1px dashed #000; 
@@ -70,6 +69,18 @@
             margin: 2px 0; 
             gap: 4px; 
             word-break: break-word; 
+        }
+        .baris-harga {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        .harga-kiri {
+            flex: 1;
+        }
+        .harga-kanan {
+            text-align: right;
+            min-width: 75px;
         }
         .baris-struk { 
             display: flex; 
@@ -634,21 +645,24 @@ function bukaStruk(rowId) {
     if (dataTerpilih.daftarPekerjaan && Array.isArray(dataTerpilih.daftarPekerjaan)) {
         dataTerpilih.daftarPekerjaan.forEach(p => {
             if(p.nama) {
-                r += `<div class="baris"><span>${p.nama}</span><span class="kanan">Rp ${(p.biaya || 0).toLocaleString('id-ID')}</span></div>`;
+                // ✅ Rp & angka sejajar rata kanan
+                r += `<div class="baris-harga">
+                    <span class="harga-kiri">${p.nama}</span>
+                    <span class="harga-kanan">Rp ${(p.biaya || 0).toLocaleString('id-ID')}</span>
+                </div>`;
             }
         });
     }
 
     document.getElementById('areaCetak').innerHTML = `
         <div class="struk" id="strukFisik">
-            <!-- ✅ LOGO + TULISAN SEJAJAR TENGAH -->
+            <!-- ✅ LOGO + TULISAN SEJAJAR TENGAH - TANPA "PELAN TAPI SAMPAI" -->
             <div class="header-struk">
                 <img src="${LOGO_URL}" alt="MF.EV" class="logo-struk">
                 <div class="judul-struk-group">
                     <div class="judul-toko">MF.EV SERVICE</div>
                 </div>
             </div>
-            <div class="sub-judul">PELAN TAPI SAMPAI</div>
             <div class="sub-judul">Pangkalpinang, Bangka Belitung</div>
             <div class="garis"></div>
             <div class="baris-struk"><span class="label-struk">Tanggal</span><span>: ${ubahFormatTanggal(dataTerpilih.tgl)}</span></div>
@@ -661,9 +675,12 @@ function bukaStruk(rowId) {
             <div class="tebal">RINCIAN PEKERJAAN:</div>
             ${r}
             <div class="garis"></div>
-            <div class="baris tebal" style="font-size:12px;"><span>TOTAL BIAYA</span><span class="kanan">Rp ${(dataTerpilih.total || 0).toLocaleString('id-ID')}</span></div>
+            <div class="baris-harga tebal" style="font-size:12px;">
+                <span class="harga-kiri">TOTAL BIAYA</span>
+                <span class="harga-kanan">Rp ${(dataTerpilih.total || 0).toLocaleString('id-ID')}</span>
+            </div>
             <div class="garis"></div>
-            ${dataTerpilih.catatan ? `<div class="tebal">CATATAN:</div><div>${dataTerpilih.catatan}</div><div class="garis"></div>` : ''}
+            ${dataTerpilih.catatan ? `<div class="tebal">CATATAN:</div><div>${dataTerpilih.catatan}</div><div class="garis"></div>` : `<div class="tebal">CATATAN:</div><div>-</div><div class="garis"></div>`}
             <div class="tengah">Terima Kasih</div>
             <div class="tengah">Semoga Kendaraan Anda Awet :-)</div>
         </div>
