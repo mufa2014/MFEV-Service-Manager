@@ -140,7 +140,7 @@
 
 <script>
 // ✅ LINK API GOOGLE SHEETS KAMU
-const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzDfnxXV81zCcSH50o48ainKbCt7s1vQ_lD1KCqPUSQFArX5ws5qZrNMCqZ0z35SQ0WNg/exec";
+const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbyUDMKPBBhIsYAVkgSBi1rwXqXw21rOT9OoHeEmaT_bYUO7_OhwJzmoNE1JHOo3HshPYg/exec";
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
 function initApp() {
@@ -230,15 +230,31 @@ function tarikDataDariSheets() {
     document.body.appendChild(script);
 }
 
+// === PERBAIKAN FORMAT TANGGAL ===
 function formatTanggalKeISO(t) {
     if (!t) return '';
-    if (typeof t !== 'string') t = String(t);
-    if (t.includes('-')) {
-        const p = t.split('-');
-        if (p[0].length === 2 && p[2].length === 4) return `${p[2]}-${p[1]}-${p[0]}`;
-        return t;
+    let bersih = String(t).replace(/T.*/, '').trim();
+    if (bersih.includes('-')) {
+        const p = bersih.split('-');
+        if (p[0].length === 2 && p[2].length === 4) {
+            return `${p[2]}-${p[1]}-${p[0]}`;
+        }
+        return bersih;
     }
-    return t;
+    return bersih;
+}
+
+function ubahFormatTanggal(t) { 
+    if(!t) return '';
+    let bersih = String(t).replace(/T.*/, '').trim();
+    if(bersih.includes('-')) {
+        const parts = bersih.split('-');
+        if(parts[0].length === 4) {
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        return bersih;
+    }
+    return bersih;
 }
 
 function formatBiaya(input) { 
@@ -249,15 +265,6 @@ function formatBiaya(input) {
 function ambilAngka(id) { 
     const val = document.getElementById(id).value.replace(/\./g,'');
     return parseInt(val, 10) || 0; 
-}
-
-function ubahFormatTanggal(t) { 
-    if(!t) return '';
-    if(t.includes('-')) {
-        const parts = t.split('-');
-        if(parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-    return t;
 }
 
 function aturSortir(k) { 
@@ -348,7 +355,7 @@ async function simpanKeSpreadsheet(data, isUpdate = false) {
     }
 }
 
-// === FUNGSI SIMPAN DATA (DIPERBAIKI) ===
+// === FUNGSI SIMPAN DATA ===
 async function simpanData() {
     const editRowId = document.getElementById('editRowId').value.trim();
     const tanggal = document.getElementById('tanggal').value;
@@ -360,12 +367,10 @@ async function simpanData() {
     const kilometer = document.getElementById('kilometer').value.trim();
     const catatan = document.getElementById('catatan').value.trim();
 
-    // ✅ Validasi wajib
     if (!tanggal || !nama || !nohp || !merk || !plat) {
         return alert('⚠️ Lengkapi: Tanggal, Nama, No HP, Merk Motor, dan No Plat!');
     }
     
-    // ✅ Kumpulkan pekerjaan
     const pekerjaan = []; 
     for(let i = 1; i <= 5; i++){
         const n = document.getElementById(`kerja${i}`).value.trim();
@@ -381,7 +386,6 @@ async function simpanData() {
     const daftar = ambilData();
     
     if(editRowId){
-        // Edit data lama
         const idx = daftar.findIndex(x => String(x.rowId) === String(editRowId));
         if(idx > -1) {
             daftar[idx] = { 
@@ -396,7 +400,6 @@ async function simpanData() {
             alert('❌ Data tidak ditemukan!');
         }
     } else {
-        // Tambah data baru
         const baru = { 
             rowId: Date.now(), 
             id: Date.now(),
