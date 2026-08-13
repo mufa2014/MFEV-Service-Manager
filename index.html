@@ -33,7 +33,7 @@
         .info-sinkron { font-size: 12px; color: #166534; background: #dcfce7; padding: 6px 12px; border-radius: 4px; margin-bottom: 12px; }
         .header-brand { display: flex; align-items: center; justify-content: center; gap: 10px; }
         .logo-header { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: white; padding: 2px; }
-        /* ⬛⬜ Logo di struk jadi HITAM PUTIH */
+        /* Logo di struk jadi HITAM PUTIH */
         .logo-hitam-putih { filter: grayscale(100%) contrast(1.15) brightness(0.95); }
     </style>
 </head>
@@ -42,7 +42,7 @@
     <!-- HEADER DENGAN LOGO BERWARNA -->
     <div class="bg-green-800 text-white py-3 rounded mb-3 no-print">
         <div class="header-brand">
-            <img src="logo-mfev.PNG" alt="MF.EV Logo" class="logo-header" id="logoMFev">
+            <img src="logo-mfev.png" alt="MF.EV Logo" class="logo-header" id="logoMFev">
             <span class="text-xl font-bold">MF.EV Service Manager</span>
         </div>
     </div>
@@ -149,10 +149,10 @@
     </div>
 
 <script>
-// === LOGO DARI FILE LOKAL (sesuai nama file kamu) ===
-const LOGO_URL = "logo-mfev.PNG";
+// === LOGO DARI FILE LOKAL ===
+const LOGO_URL = "logo-mfev.png";
 
-// ✅ LINK API GOOGLE SHEETS KAMU
+// ✅ LINK API GOOGLE SHEETS
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzDfnxXV81zCcSH50o48ainKbCt7s1vQ_lD1KCqPUSQFArX5ws5qZrNMCqZ0z35SQ0WNg/exec";
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
@@ -243,15 +243,13 @@ function tarikDataDariSheets() {
     document.body.appendChild(script);
 }
 
-// === PERBAIKAN FORMAT TANGGAL ===
+// === FORMAT TANGGAL ===
 function formatTanggalKeISO(t) {
     if (!t) return '';
     let bersih = String(t).replace(/T.*/, '').trim();
     if (bersih.includes('-')) {
         const p = bersih.split('-');
-        if (p[0].length === 2 && p[2].length === 4) {
-            return `${p[2]}-${p[1]}-${p[0]}`;
-        }
+        if (p[0].length === 2 && p[2].length === 4) return `${p[2]}-${p[1]}-${p[0]}`;
         return bersih;
     }
     return bersih;
@@ -262,9 +260,7 @@ function ubahFormatTanggal(t) {
     let bersih = String(t).replace(/T.*/, '').trim();
     if(bersih.includes('-')) {
         const parts = bersih.split('-');
-        if(parts[0].length === 4) {
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
+        if(parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
         return bersih;
     }
     return bersih;
@@ -281,12 +277,8 @@ function ambilAngka(id) {
 }
 
 function aturSortir(k) { 
-    if (kolomSortir === k) {
-        urutanNaik = !urutanNaik;
-    } else {
-        kolomSortir = k;
-        urutanNaik = (k === 'nama' || k === 'merk' || k === 'tipe');
-    }
+    if (kolomSortir === k) urutanNaik = !urutanNaik;
+    else { kolomSortir = k; urutanNaik = (k === 'nama' || k === 'merk' || k === 'tipe'); }
     tampilData(); 
 }
 
@@ -309,12 +301,8 @@ function resetForm() {
 function ambilData() { 
     try {
         const d = localStorage.getItem('riwayatServis');
-        if (!d) return [];
-        return JSON.parse(d);
-    } catch (err) {
-        console.error('Baca storage gagal:', err);
-        return [];
-    }
+        return d ? JSON.parse(d) : [];
+    } catch { return []; }
 }
 
 function simpanKeStorage(d) { 
@@ -326,15 +314,11 @@ async function simpanKeSpreadsheet(data, isUpdate = false) {
     if (!URL_GOOGLE_SHEETS) return;
     
     const statusEl = document.getElementById('statusProses');
-    if(statusEl) {
-        statusEl.textContent = '⏳ Menyimpan ke Google Sheets...';
-        statusEl.classList.remove('hidden');
-    }
+    if(statusEl) { statusEl.textContent = '⏳ Menyimpan ke Google Sheets...'; statusEl.classList.remove('hidden'); }
 
     const rincian = data.daftarPekerjaan
         .map(p => p.nama ? `${p.nama}: Rp ${p.biaya.toLocaleString('id-ID')}` : '')
-        .filter(Boolean)
-        .join(' | ');
+        .filter(Boolean).join(' | ');
 
     const payload = { 
         action: isUpdate ? "update" : "insert",
@@ -358,17 +342,17 @@ async function simpanKeSpreadsheet(data, isUpdate = false) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(payload) 
         }); 
-        if(statusEl) { statusEl.textContent = '✅ Tersimpan ke Sheets!'; }
+        if(statusEl) statusEl.textContent = '✅ Tersimpan ke Sheets!';
         setTimeout(() => tarikDataDariSheets(), 2000);
     } catch(e) { 
         console.warn('Gagal kirim ke Sheets:', e); 
-        if(statusEl) { statusEl.textContent = '⚠️ Tersimpan di HP saja'; }
+        if(statusEl) statusEl.textContent = '⚠️ Tersimpan di HP saja';
     } finally {
         setTimeout(() => { if(statusEl) statusEl.classList.add('hidden'); }, 3000);
     }
 }
 
-// === FUNGSI SIMPAN DATA ===
+// === SIMPAN DATA ===
 async function simpanData() {
     const editRowId = document.getElementById('editRowId').value.trim();
     const tanggal = document.getElementById('tanggal').value;
@@ -391,9 +375,7 @@ async function simpanData() {
         if(n || b > 0) pekerjaan.push({nama: n, biaya: b});
     }
 
-    if(pekerjaan.length === 0) { 
-        return alert('⚠️ Isi minimal 1 pekerjaan & biayanya!'); 
-    }
+    if(pekerjaan.length === 0) return alert('⚠️ Isi minimal 1 pekerjaan & biayanya!');
     
     const total = pekerjaan.reduce((s, i) => s + i.biaya, 0);
     const daftar = ambilData();
@@ -401,24 +383,13 @@ async function simpanData() {
     if(editRowId){
         const idx = daftar.findIndex(x => String(x.rowId) === String(editRowId));
         if(idx > -1) {
-            daftar[idx] = { 
-                ...daftar[idx], 
-                tgl: tanggal, nama, nohp, merk, tipe, plat, kilometer, 
-                daftarPekerjaan: pekerjaan, total, catatan 
-            };
+            daftar[idx] = { ...daftar[idx], tgl: tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan: pekerjaan, total, catatan };
             simpanKeStorage(daftar);
             await simpanKeSpreadsheet({ ...daftar[idx], rowId: parseInt(editRowId) }, true);
             alert('✅ Data diperbarui!');
-        } else {
-            alert('❌ Data tidak ditemukan!');
-        }
+        } else alert('❌ Data tidak ditemukan!');
     } else {
-        const baru = { 
-            rowId: Date.now(), 
-            id: Date.now(),
-            tgl: tanggal, nama, nohp, merk, tipe, plat, kilometer, 
-            daftarPekerjaan: pekerjaan, total, catatan 
-        };
+        const baru = { rowId: Date.now(), id: Date.now(), tgl: tanggal, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan: pekerjaan, total, catatan };
         daftar.unshift(baru);
         simpanKeStorage(daftar);
         await simpanKeSpreadsheet(baru, false);
@@ -479,12 +450,10 @@ function tampilData() {
 function eksporExcel() { 
     const d = ambilData();
     let csv = "\uFEFFTanggal,Nama,No HP,Merk Motor,Tipe Motor,No Plat,Kilometer,Rincian,Total,Catatan\n";
-    
     d.forEach(i => {
         let r = i.daftarPekerjaan ? i.daftarPekerjaan.map(p => p.nama ? `${p.nama} (Rp ${p.biaya})` : '').filter(Boolean).join('; ') : '';
         csv += `"${ubahFormatTanggal(i.tgl)}","${i.nama}","${i.nohp}","${i.merk}","${i.tipe}","${i.plat}","${i.kilometer||'-'}","${r}","${i.total}","${i.catatan||'-'}"\n`;
     });
-
     const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
     const u = URL.createObjectURL(blob);
     const a = document.createElement('a'); 
@@ -509,7 +478,6 @@ function imporData(e) {
     const file = e.target.files[0];
     if(!file) return;
     if(!confirm('Ganti data lokal dengan cadangan JSON ini?')) return;
-    
     const r = new FileReader();
     r.onload = ev => {
         try {
@@ -518,12 +486,8 @@ function imporData(e) {
                 simpanKeStorage(parsed); 
                 tampilData(); 
                 alert('✅ Data lokal diperbarui!');
-            } else {
-                alert('❌ Format JSON salah.');
-            }
-        } catch {
-            alert('❌ Gagal membaca file JSON.');
-        }
+            } else alert('❌ Format JSON salah.');
+        } catch { alert('❌ Gagal membaca file JSON.'); }
     };
     r.readAsText(file); 
 }
@@ -531,7 +495,6 @@ function imporData(e) {
 function bukaEdit(rowId) { 
     const d = ambilData().find(x => String(x.rowId) === String(rowId)); 
     if(!d) return alert('Data tidak ditemukan!');
-    
     document.getElementById('editRowId').value = rowId; 
     document.getElementById('judulForm').textContent = 'Edit Riwayat Servis';
     document.getElementById('tanggal').value = d.tgl; 
@@ -548,7 +511,6 @@ function bukaEdit(rowId) {
         document.getElementById(`kerja${i}`).value = x.nama || '';
         document.getElementById(`biaya${i}`).value = x.biaya > 0 ? x.biaya.toLocaleString('id-ID') : '';
     }
-    
     hitungTotal(); 
     window.scrollTo({top: 0, behavior: 'smooth'}); 
 }
@@ -647,18 +609,13 @@ Terima kasih telah servis di MF.EV Service!
 ⚡ PELAN TAPI SAMPAI ⚡`;
 
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-                files: [file],
-                title: 'Struk Servis MF.EV',
-                text: pesan
-            });
+            await navigator.share({ files: [file], title: 'Struk Servis MF.EV', text: pesan });
         } else {
             const a = document.createElement("a");
             a.href = canvas.toDataURL("image/png");
             a.download = `Struk-${dataTerpilih.nama}.png`;
             a.click();
 
-            // ✅ Paksa buka WhatsApp BIASA
             let hp = String(dataTerpilih.nohp).replace(/\D/g, '');
             if (hp.startsWith('0')) hp = '62' + hp.slice(1);
             const urlWA = `https://api.whatsapp.com/send?app=wa&phone=${hp}&text=${encodeURIComponent(pesan)}`;
