@@ -139,7 +139,7 @@
     </div>
 
 <script>
-// ✅ LINK API GOOGLE SHEETS KAMU (SUDAH DIUPDATE)
+// ✅ LINK API GOOGLE SHEETS KAMU
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzDfnxXV81zCcSH50o48ainKbCt7s1vQ_lD1KCqPUSQFArX5ws5qZrNMCqZ0z35SQ0WNg/exec";
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
@@ -640,9 +640,10 @@ Terima kasih telah servis di MF.EV Service!`;
             a.download = `Struk-${dataTerpilih.nama}.png`;
             a.click();
 
+            // ✅ DIPERBAIKI: Tambah &app=wa agar membuka WhatsApp BIASA
             let hp = String(dataTerpilih.nohp).replace(/\D/g, '');
             if (hp.startsWith('0')) hp = '62' + hp.slice(1);
-            const urlWA = `https://api.whatsapp.com/send?phone=${hp}&text=${encodeURIComponent(pesan)}`;
+            const urlWA = `https://api.whatsapp.com/send?app=wa&phone=${hp}&text=${encodeURIComponent(pesan)}`;
 
             alert("📷 Struk terunduh otomatis!\nBuka WA & lampirkan gambar struknya.");
             window.open(urlWA, '_blank');
