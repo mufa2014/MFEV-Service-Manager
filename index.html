@@ -168,7 +168,12 @@
 
 <script>
 const LOGO_URL = "logo-mfev.png";
-const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzDfnxXV81zCcSH50o48ainKbCt7s1vQ_lD1KCqPUSQFArX5ws5qZrNMCqZ0z35SQ0WNg/exec";
+
+// ==================================================
+// ⚠️ GANTI URL INI DENGAN URL WEB APP MILIKMU!
+// ==================================================
+const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbwBM1LwGMmGqaKvb6M8muJrsA0CjANmibC4BeQgTPEgxUtyvppdxiNf2f6c6J6h1TUS/exec";
+
 let daftarData = [];
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
@@ -194,10 +199,16 @@ function tarikDataDariSheets() {
     if (statusEl) { statusEl.textContent = '⏳ Mengambil data...'; statusEl.classList.remove('hidden'); }
     labelKoneksi.textContent = '⏳ Menghubungkan ke Google Sheets...';
     labelKoneksi.className = 'text-xs font-semibold text-amber-700';
-    const scriptLama = document.getElementById('jsonpScript');
-    if (scriptLama) scriptLama.remove();
-    window.prosesDataDariSheets = function(res) {
-        const statusEl = document.getElementById('statusProses');
+
+    fetch(URL_GOOGLE_SHEETS + "?t=" + Date.now(), {
+        method: "GET",
+        cache: "no-store"
+    })
+    .then(response => {
+        if (!response.ok) throw new Error("HTTP Error: " + response.status);
+        return response.json();
+    })
+    .then(res => {
         let rawList = [];
         if (Array.isArray(res)) rawList = res;
         else if (res && res.data && Array.isArray(res.data)) rawList = res.data;
@@ -245,18 +256,15 @@ function tarikDataDariSheets() {
             document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-amber-700';
         }
         if (statusEl) statusEl.classList.add('hidden');
-    };
-    const script = document.createElement('script');
-    script.id = 'jsonpScript';
-    script.src = `${URL_GOOGLE_SHEETS}?callback=prosesDataDariSheets&t=${Date.now()}`;
-    script.onerror = function() {
-        document.getElementById('labelKoneksi').textContent = '❌ Gagal terhubung ke Sheets';
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        document.getElementById('labelKoneksi').textContent = '❌ Gagal terhubung: ' + err.message;
         document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-red-700';
         daftarData = [];
         tampilData();
         if (statusEl) statusEl.classList.add('hidden');
-    };
-    document.body.appendChild(script);
+    });
 }
 
 function formatTanggalKeISO(t) {
@@ -305,12 +313,17 @@ async function simpanKeSpreadsheet(data,isUpdate=false) {
         Catatan:data.catatan||'-', SudahDihubungi:data.sudahDihubungi||false
     };
     try{
-        await fetch(URL_GOOGLE_SHEETS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        if(statusEl)statusEl.textContent='✅ Tersimpan di Google Sheets!';
+        const res = await fetch(URL_GOOGLE_SHEETS, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        await res.json();
+        if(statusEl) statusEl.textContent = '✅ Tersimpan di Google Sheets!';
         setTimeout(()=>tarikDataDariSheets(), 1500);
     }catch(e){
         console.warn('Gagal kirim ke Sheets:',e);
-        if(statusEl)statusEl.textContent='❌ Gagal menyimpan! Coba lagi.';
+        if(statusEl) statusEl.textContent='❌ Gagal menyimpan! ' + e.message;
     }finally{setTimeout(()=>{if(statusEl)statusEl.classList.add('hidden');},3000);}
 }
 
@@ -320,17 +333,17 @@ async function hapusDariSheets(rowId) {
     if(statusEl){ statusEl.textContent = '⏳ Menghapus dari Sheets...'; statusEl.classList.remove('hidden'); }
     const payload = { action: "hapus", rowId: rowId };
     try {
-        await fetch(URL_GOOGLE_SHEETS, {
+        const res = await fetch(URL_GOOGLE_SHEETS, {
             method: 'POST',
-            mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+        await res.json();
         if(statusEl) statusEl.textContent = '✅ Dihapus dari Sheets!';
         setTimeout(()=>tarikDataDariSheets(), 1500);
     } catch(e) {
         console.warn('Gagal hapus di Sheets:', e);
-        if(statusEl) statusEl.textContent = '❌ Gagal menghapus!';
+        if(statusEl) statusEl.textContent = '❌ Gagal menghapus! ' + e.message;
     } finally {
         setTimeout(()=>{ if(statusEl) statusEl.classList.add('hidden'); }, 3000);
     }
