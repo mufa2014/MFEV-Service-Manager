@@ -55,16 +55,16 @@
     </div>
 
     <div id="kotakInfoFitur" class="fixed hidden z-50 bg-white border border-gray-200 rounded-lg shadow-xl p-4 text-sm max-w-xs" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <h4 class="font-bold text-lg mb-3 text-center text-green-800">✅ Fitur Aktif — Versi Saat Ini</h4>
+        <h4 class="font-bold text-lg mb-3 text-center text-green-800">✅ Fitur Aktif — Data Hanya di Google Sheets</h4>
         <ul class="space-y-1.5 text-gray-700">
             <li>📝 Tambah & Edit Data Servis</li>
+            <li>🗑️ Hapus Data (Langsung ke Sheets)</li>
             <li>🖨️ Cetak Struk & Simpan Gambar Struk</li>
             <li>📲 Kirim Pesan WA Otomatis</li>
             <li>🔍 Cari & Urutkan Riwayat Servis</li>
-            <li>☁️ Sinkronisasi Data ke Google Sheets</li>
+            <li>☁️ Data Tersimpan Hanya di Google Sheets</li>
             <li>🔔 Pengingat Servis Berkala</li>
             <li>✅ Tandai Sudah Dihubungi</li>
-            <li>💾 Cadangkan & Pulihkan Data</li>
             <li>📊 Ekspor Data ke Excel (CSV)</li>
         </ul>
         <button onclick="tutupInfoFitur()" class="w-full mt-4 bg-green-700 text-white py-2 rounded text-sm font-medium hover:bg-green-800">Tutup</button>
@@ -118,13 +118,10 @@
     </div>
 
     <div class="bg-amber-50 p-3 rounded mb-4 text-sm no-print border border-amber-200">
-        <div class="font-semibold mb-2 text-amber-900">📂 Cadangan & Pemulihan Data</div>
+        <div class="font-semibold mb-2 text-amber-900">☁️ Data Disimpan Hanya di Google Sheets</div>
         <div class="flex gap-2 flex-wrap">
-            <button onclick="tarikDataDariSheets()" class="bg-blue-700 text-white px-3 py-1.5 rounded text-xs">🔄 Muat Ulang Sheets</button>
+            <button onclick="tarikDataDariSheets()" class="bg-blue-700 text-white px-3 py-1.5 rounded text-xs">🔄 Muat Ulang Data</button>
             <button onclick="eksporExcel()" class="bg-green-700 text-white px-3 py-1.5 rounded text-xs">📊 Ekspor Excel (CSV)</button>
-            <button onclick="eksporData()" class="bg-amber-600 text-white px-3 py-1.5 rounded text-xs">💾 Cadangan JSON</button>
-            <button onclick="document.getElementById('fileImpor').click()" class="bg-gray-600 text-white px-3 py-1.5 rounded text-xs">📂 Pulihkan Data</button>
-            <input type="file" id="fileImpor" accept=".json" class="hidden" onchange="imporData(event)">
         </div>
     </div>
 
@@ -172,6 +169,7 @@
 <script>
 const LOGO_URL = "logo-mfev.png";
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzDfnxXV81zCcSH50o48ainKbCt7s1vQ_lD1KCqPUSQFArX5ws5qZrNMCqZ0z35SQ0WNg/exec";
+let daftarData = [];
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
 function tampilInfoFitur() {
@@ -206,11 +204,13 @@ function tarikDataDariSheets() {
         else if (res && res.status === "berhasil") {
             document.getElementById('labelKoneksi').textContent = '☁️ Terhubung, siap simpan data baru';
             document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-green-700';
+            daftarData = [];
+            tampilData();
             if (statusEl) statusEl.classList.add('hidden');
             return;
         }
         if (rawList.length > 0) {
-            const formatted = rawList.map((item, idx) => {
+            daftarData = rawList.map((item, idx) => {
                 const pekerjaanArr = [];
                 const rincianStr = item.RincianPekerjaan || item.rincian || '';
                 if (rincianStr) rincianStr.split(' | ').forEach(p => {
@@ -235,10 +235,12 @@ function tarikDataDariSheets() {
                     sudahDihubungi: item.SudahDihubungi || item.sudahDihubungi || false
                 };
             });
-            simpanKeStorage(formatted); tampilData();
-            document.getElementById('labelKoneksi').textContent = '✅ Terhubung & Data Disinkronkan';
+            tampilData();
+            document.getElementById('labelKoneksi').textContent = `✅ Terhubung — ${daftarData.length} data dari Sheets`;
             document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-green-700';
         } else {
+            daftarData = [];
+            tampilData();
             document.getElementById('labelKoneksi').textContent = '⚠️ Terhubung, Sheets masih kosong';
             document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-amber-700';
         }
@@ -248,8 +250,10 @@ function tarikDataDariSheets() {
     script.id = 'jsonpScript';
     script.src = `${URL_GOOGLE_SHEETS}?callback=prosesDataDariSheets&t=${Date.now()}`;
     script.onerror = function() {
-        document.getElementById('labelKoneksi').textContent = '❌ Gagal terhubung, simpan lokal saja';
+        document.getElementById('labelKoneksi').textContent = '❌ Gagal terhubung ke Sheets';
         document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-red-700';
+        daftarData = [];
+        tampilData();
         if (statusEl) statusEl.classList.add('hidden');
     };
     document.body.appendChild(script);
@@ -286,8 +290,6 @@ function resetForm() {
     document.getElementById('tglBerikutnya').value='';
     hitungTotal();
 }
-function ambilData() { try{const d=localStorage.getItem('riwayatServis'); return d?JSON.parse(d):[];}catch{return[];} }
-function simpanKeStorage(d) { localStorage.setItem('riwayatServis',JSON.stringify(d)); }
 
 async function simpanKeSpreadsheet(data,isUpdate=false) {
     if(!URL_GOOGLE_SHEETS)return;
@@ -304,19 +306,18 @@ async function simpanKeSpreadsheet(data,isUpdate=false) {
     };
     try{
         await fetch(URL_GOOGLE_SHEETS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        if(statusEl)statusEl.textContent='✅ Tersimpan ke Sheets!';
-        setTimeout(()=>tarikDataDariSheets(),2000);
+        if(statusEl)statusEl.textContent='✅ Tersimpan di Google Sheets!';
+        setTimeout(()=>tarikDataDariSheets(), 1500);
     }catch(e){
         console.warn('Gagal kirim ke Sheets:',e);
-        if(statusEl)statusEl.textContent='⚠️ Tersimpan di HP saja';
+        if(statusEl)statusEl.textContent='❌ Gagal menyimpan! Coba lagi.';
     }finally{setTimeout(()=>{if(statusEl)statusEl.classList.add('hidden');},3000);}
 }
 
-// ✅ FUNGSI BARU: HAPUS DATA DI GOOGLE SHEETS
 async function hapusDariSheets(rowId) {
     if(!URL_GOOGLE_SHEETS) return;
     const statusEl = document.getElementById('statusProses');
-    if(statusEl){ statusEl.textContent = '⏳ Menghapus data dari Sheets...'; statusEl.classList.remove('hidden'); }
+    if(statusEl){ statusEl.textContent = '⏳ Menghapus dari Sheets...'; statusEl.classList.remove('hidden'); }
     const payload = { action: "hapus", rowId: rowId };
     try {
         await fetch(URL_GOOGLE_SHEETS, {
@@ -329,7 +330,7 @@ async function hapusDariSheets(rowId) {
         setTimeout(()=>tarikDataDariSheets(), 1500);
     } catch(e) {
         console.warn('Gagal hapus di Sheets:', e);
-        if(statusEl) statusEl.textContent = '⚠️ Hapus lokal saja';
+        if(statusEl) statusEl.textContent = '❌ Gagal menghapus!';
     } finally {
         setTimeout(()=>{ if(statusEl) statusEl.classList.add('hidden'); }, 3000);
     }
@@ -355,29 +356,22 @@ async function simpanData() {
     }
     if(pekerjaan.length===0)return alert('⚠️ Isi minimal 1 pekerjaan & biayanya!');
     const total=pekerjaan.reduce((s,i)=>s+i.biaya,0);
-    const daftar=ambilData();
+    
     if(editRowId){
-        const idx=daftar.findIndex(x=>String(x.rowId)===String(editRowId));
-        if(idx>-1){
-            daftar[idx]={...daftar[idx],tgl:tanggal,tglBerikutnya,nama,nohp,merk,tipe,plat,kilometer,daftarPekerjaan:pekerjaan,total,catatan};
-            simpanKeStorage(daftar);
-            await simpanKeSpreadsheet({...daftar[idx],rowId:parseInt(editRowId)},true);
-            alert('✅ Data diperbarui!');
-        }else alert('❌ Data tidak ditemukan!');
+        const data = { rowId: parseInt(editRowId), tgl:tanggal, tglBerikutnya, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan:pekerjaan, total, catatan, sudahDihubungi:false };
+        await simpanKeSpreadsheet(data, true);
+        alert('✅ Data diperbarui di Google Sheets!');
     }else{
-        const baru={rowId:Date.now(),id:Date.now(),tgl:tanggal,tglBerikutnya,nama,nohp,merk,tipe,plat,kilometer,daftarPekerjaan:pekerjaan,total,catatan,sudahDihubungi:false};
-        daftar.unshift(baru);
-        simpanKeStorage(daftar);
-        await simpanKeSpreadsheet(baru,false);
-        alert('✅ Data Tersimpan!');
+        const data = { tgl:tanggal, tglBerikutnya, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan:pekerjaan, total, catatan, sudahDihubungi:false };
+        await simpanKeSpreadsheet(data, false);
+        alert('✅ Data Tersimpan di Google Sheets!');
     }
-    resetForm(); tampilData();
+    resetForm();
 }
 
 function tampilData() {
     const k=document.getElementById('kataKunci').value.toLowerCase();
-    const daftar=ambilData();
-    let hasil=daftar.filter(i=>(i.nama||'').toLowerCase().includes(k)||(i.merk||'').toLowerCase().includes(k)||(i.tipe||'').toLowerCase().includes(k)||(i.plat||'').toLowerCase().includes(k)||(i.nohp||'').includes(k));
+    let hasil=daftarData.filter(i=>(i.nama||'').toLowerCase().includes(k)||(i.merk||'').toLowerCase().includes(k)||(i.tipe||'').toLowerCase().includes(k)||(i.plat||'').toLowerCase().includes(k)||(i.nohp||'').includes(k));
     hasil.sort((a,b)=>{
         let na,nb;
         switch(kolomSortir){
@@ -407,13 +401,13 @@ function tampilData() {
                 <button onclick="bukaEdit(${i.rowId})" class="bg-amber-500 text-white px-2 py-1 rounded text-xs ml-1">Edit</button>
                 <button onclick="hapusData(${i.rowId})" class="bg-red-500 text-white px-2 py-1 rounded text-xs ml-1">Hapus</button>
             </td>
-        </tr>`).join(''):`<tr><td colspan="6" class="p-4 text-center text-gray-500">Data tidak ditemukan</td></tr>`;
+        </tr>`).join(''):`<tr><td colspan="6" class="p-4 text-center text-gray-500">Data tidak ditemukan. Klik "🔄 Muat Ulang Data" untuk ambil dari Sheets.</td></tr>`;
 }
 
 function eksporExcel() {
-    const d=ambilData();
+    if(!daftarData.length) return alert('⚠️ Tidak ada data untuk diekspor. Klik "🔄 Muat Ulang Data" dulu.');
     let csv="\uFEFFTanggal,TanggalBerikutnya,Nama,No HP,Merk Motor,Tipe Motor,No Plat,Kilometer,Rincian,Total,Catatan\n";
-    d.forEach(i=>{
+    daftarData.forEach(i=>{
         let r=i.daftarPekerjaan?i.daftarPekerjaan.map(p=>p.nama?`${p.nama} (Rp ${p.biaya})`:'').filter(Boolean).join('; '):'';
         csv+=`"${ubahFormatTanggal(i.tgl)}","${ubahFormatTanggal(i.tglBerikutnya||'')}","${i.nama}","${i.nohp}","${i.merk}","${i.tipe}","${i.plat}","${i.kilometer||'-'}","${r}","${i.total}","${i.catatan||'-'}"\n`;
     });
@@ -421,19 +415,9 @@ function eksporExcel() {
     const u=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=u;a.download=`Laporan-Servis-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(u);
 }
-function eksporData() {
-    const d=ambilData();
-    const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
-    const u=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=u;a.download=`Backup-Servis-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(u);
-}
-function imporData(e) {
-    const f=e.target.files[0];if(!f)return;
-    if(!confirm('Ganti data lokal dengan cadangan JSON ini?'))return;
-    const r=new FileReader();r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(Array.isArray(p)){simpanKeStorage(p);tampilData();alert('✅ Data lokal diperbarui!');}else alert('❌ Format JSON salah.');}catch{alert('❌ Gagal membaca file JSON.');}};r.readAsText(f);
-}
+
 function bukaEdit(rowId) {
-    const d=ambilData().find(x=>String(x.rowId)===String(rowId));if(!d)return alert('Data tidak ditemukan!');
+    const d=daftarData.find(x=>String(x.rowId)===String(rowId));if(!d)return alert('Data tidak ditemukan! Klik "🔄 Muat Ulang Data" dulu.');
     document.getElementById('editRowId').value=rowId;document.getElementById('judulForm').textContent='Edit Riwayat Servis';
     document.getElementById('tanggal').value=d.tgl;document.getElementById('tglBerikutnya').value=d.tglBerikutnya||'';
     document.getElementById('nama').value=d.nama;document.getElementById('nohp').value=d.nohp;
@@ -448,18 +432,13 @@ function bukaEdit(rowId) {
     hitungTotal();window.scrollTo({top:0,behavior:'smooth'});
 }
 
-// ✅ FUNGSI HAPUS — DIUBAH UNTUK HAPUS DI SHEETS JUGA
 async function hapusData(rowId) {
-    if (!confirm('Hapus data ini? Tindakan ini tidak bisa dibatalkan!')) return;
-    // Hapus dari lokal
-    simpanKeStorage(ambilData().filter(x=>String(x.rowId)!==String(rowId)));
-    tampilData();
-    // Hapus dari Google Sheets
+    if (!confirm('Hapus data ini dari Google Sheets? Tindakan ini tidak bisa dibatalkan!')) return;
     await hapusDariSheets(rowId);
 }
 
 function bukaStruk(rowId) {
-    dataTerpilih=ambilData().find(x=>String(x.rowId)===String(rowId));if(!dataTerpilih)return;
+    dataTerpilih=daftarData.find(x=>String(x.rowId)===String(rowId));if(!dataTerpilih)return alert('Data tidak ditemukan!');
     let r='';
     if(dataTerpilih.daftarPekerjaan&&Array.isArray(dataTerpilih.daftarPekerjaan)){
         dataTerpilih.daftarPekerjaan.forEach(p=>{if(p.nama)r+=`<div class="baris-harga"><span class="harga-kiri">${p.nama}</span><span class="harga-kanan">Rp ${(p.biaya||0).toLocaleString('id-ID')}</span></div>`;});
