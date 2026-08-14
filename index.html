@@ -36,6 +36,8 @@
         .info-sinkron { font-size:12px; color:#166534; background:#dcfce7; padding:6px 12px; border-radius:4px; margin-bottom:12px; }
         .header-brand { display:flex; align-items:center; justify-content:center; gap:10px; }
         .logo-header { width:42px; height:42px; border-radius:50%; object-fit:cover; background:#fff; padding:2px; }
+        #kotakInfoFitur { display:none; }
+        #kotakInfoFitur.tampil { display:block; }
     </style>
 </head>
 <body class="bg-gray-100 max-w-xl mx-auto p-3" onload="initApp()">
@@ -47,13 +49,11 @@
         </div>
     </div>
 
-    <!-- ✅ DIPERBAIKI: Kedua tombol berfungsi tanpa gangguan -->
     <div class="flex items-center gap-2 no-print mb-4">
         <a href="pengingat.html" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700" target="_blank">🔔 Buka Halaman Pengingat Servis →</a>
         <button onclick="tampilInfoFitur()" class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-800 rounded-full text-sm font-bold border border-blue-300 hover:bg-blue-200 transition-colors" title="Lihat Fitur">ℹ️</button>
     </div>
 
-    <!-- ✅ Kotak Info Fitur -->
     <div id="kotakInfoFitur" class="fixed hidden z-50 bg-white border border-gray-200 rounded-lg shadow-xl p-4 text-sm max-w-xs" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
         <h4 class="font-bold text-lg mb-3 text-center text-green-800">✅ Fitur Aktif — Versi Saat Ini</h4>
         <ul class="space-y-1.5 text-gray-700">
@@ -174,20 +174,16 @@ const LOGO_URL = "logo-mfev.png";
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzDfnxXV81zCcSH50o48ainKbCt7s1vQ_lD1KCqPUSQFArX5ws5qZrNMCqZ0z35SQ0WNg/exec";
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
-// === ✅ FUNGSI TOMBOL INFO FITUR — DIPERBAIKI ===
 function tampilInfoFitur() {
-    document.getElementById('kotakInfoFitur').classList.remove('hidden');
+    document.getElementById('kotakInfoFitur').classList.add('tampil');
 }
 function tutupInfoFitur() {
-    document.getElementById('kotakInfoFitur').classList.add('hidden');
+    document.getElementById('kotakInfoFitur').classList.remove('tampil');
 }
 document.addEventListener('click', function(e) {
     const kotak = document.getElementById('kotakInfoFitur');
-    if (!kotak.classList.contains('hidden') && !kotak.contains(e.target)) {
-        const tombolInfo = e.target.closest('button[onclick="tampilInfoFitur()"]');
-        if (!tombolInfo) {
-            kotak.classList.add('hidden');
-        }
+    if (kotak.classList.contains('tampil') && !kotak.contains(e.target) && !e.target.closest('button[onclick="tampilInfoFitur()"]')) {
+        tutupInfoFitur();
     }
 });
 
@@ -316,6 +312,29 @@ async function simpanKeSpreadsheet(data,isUpdate=false) {
     }finally{setTimeout(()=>{if(statusEl)statusEl.classList.add('hidden');},3000);}
 }
 
+// ✅ FUNGSI BARU: HAPUS DATA DI GOOGLE SHEETS
+async function hapusDariSheets(rowId) {
+    if(!URL_GOOGLE_SHEETS) return;
+    const statusEl = document.getElementById('statusProses');
+    if(statusEl){ statusEl.textContent = '⏳ Menghapus data dari Sheets...'; statusEl.classList.remove('hidden'); }
+    const payload = { action: "hapus", rowId: rowId };
+    try {
+        await fetch(URL_GOOGLE_SHEETS, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if(statusEl) statusEl.textContent = '✅ Dihapus dari Sheets!';
+        setTimeout(()=>tarikDataDariSheets(), 1500);
+    } catch(e) {
+        console.warn('Gagal hapus di Sheets:', e);
+        if(statusEl) statusEl.textContent = '⚠️ Hapus lokal saja';
+    } finally {
+        setTimeout(()=>{ if(statusEl) statusEl.classList.add('hidden'); }, 3000);
+    }
+}
+
 async function simpanData() {
     const editRowId=document.getElementById('editRowId').value.trim();
     const tanggal=document.getElementById('tanggal').value;
@@ -428,7 +447,17 @@ function bukaEdit(rowId) {
     }
     hitungTotal();window.scrollTo({top:0,behavior:'smooth'});
 }
-function hapusData(rowId) { if(confirm('Hapus baris ini dari daftar lokal?')){simpanKeStorage(ambilData().filter(x=>String(x.rowId)!==String(rowId)));tampilData();} }
+
+// ✅ FUNGSI HAPUS — DIUBAH UNTUK HAPUS DI SHEETS JUGA
+async function hapusData(rowId) {
+    if (!confirm('Hapus data ini? Tindakan ini tidak bisa dibatalkan!')) return;
+    // Hapus dari lokal
+    simpanKeStorage(ambilData().filter(x=>String(x.rowId)!==String(rowId)));
+    tampilData();
+    // Hapus dari Google Sheets
+    await hapusDariSheets(rowId);
+}
+
 function bukaStruk(rowId) {
     dataTerpilih=ambilData().find(x=>String(x.rowId)===String(rowId));if(!dataTerpilih)return;
     let r='';
