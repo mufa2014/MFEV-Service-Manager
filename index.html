@@ -55,14 +55,14 @@
     </div>
 
     <div id="kotakInfoFitur" class="fixed hidden z-50 bg-white border border-gray-200 rounded-lg shadow-xl p-4 text-sm max-w-xs" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <h4 class="font-bold text-lg mb-3 text-center text-green-800">✅ Fitur Aktif — Data Hanya di Google Sheets</h4>
+        <h4 class="font-bold text-lg mb-3 text-center text-green-800">✅ Fitur Aktif — Data di Google Sheets</h4>
         <ul class="space-y-1.5 text-gray-700">
             <li>📝 Tambah & Edit Data Servis</li>
             <li>🗑️ Hapus Data (Langsung ke Sheets)</li>
             <li>🖨️ Cetak Struk & Simpan Gambar Struk</li>
             <li>📲 Kirim Pesan WA Otomatis</li>
             <li>🔍 Cari & Urutkan Riwayat Servis</li>
-            <li>☁️ Data Tersimpan Hanya di Google Sheets</li>
+            <li>☁️ Data Tersimpan di Google Sheets</li>
             <li>🔔 Pengingat Servis Berkala</li>
             <li>✅ Tandai Sudah Dihubungi</li>
             <li>📊 Ekspor Data ke Excel (CSV)</li>
@@ -118,7 +118,7 @@
     </div>
 
     <div class="bg-amber-50 p-3 rounded mb-4 text-sm no-print border border-amber-200">
-        <div class="font-semibold mb-2 text-amber-900">☁️ Data Disimpan Hanya di Google Sheets</div>
+        <div class="font-semibold mb-2 text-amber-900">☁️ Data Disimpan di Google Sheets</div>
         <div class="flex gap-2 flex-wrap">
             <button onclick="tarikDataDariSheets()" class="bg-blue-700 text-white px-3 py-1.5 rounded text-xs">🔄 Muat Ulang Data</button>
             <button onclick="eksporExcel()" class="bg-green-700 text-white px-3 py-1.5 rounded text-xs">📊 Ekspor Excel (CSV)</button>
@@ -177,12 +177,8 @@ const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbwBM1LwGMmGqa
 let daftarData = [];
 let dataTerpilih = null, kolomSortir = 'tgl', urutanNaik = false;
 
-function tampilInfoFitur() {
-    document.getElementById('kotakInfoFitur').classList.add('tampil');
-}
-function tutupInfoFitur() {
-    document.getElementById('kotakInfoFitur').classList.remove('tampil');
-}
+function tampilInfoFitur() { document.getElementById('kotakInfoFitur').classList.add('tampil'); }
+function tutupInfoFitur() { document.getElementById('kotakInfoFitur').classList.remove('tampil'); }
 document.addEventListener('click', function(e) {
     const kotak = document.getElementById('kotakInfoFitur');
     if (kotak.classList.contains('tampil') && !kotak.contains(e.target) && !e.target.closest('button[onclick="tampilInfoFitur()"]')) {
@@ -201,38 +197,32 @@ function tarikDataDariSheets() {
     labelKoneksi.className = 'text-xs font-semibold text-amber-700';
 
     fetch(URL_GOOGLE_SHEETS + "?t=" + Date.now(), {
-        method: "GET",
-        cache: "no-store"
+        method: "GET", cache: "no-store"
     })
-    .then(response => {
-        if (!response.ok) throw new Error("HTTP Error: " + response.status);
-        return response.json();
-    })
+    .then(res => { if(!res.ok) throw new Error("HTTP Error: "+res.status); return res.json(); })
     .then(res => {
         let rawList = [];
         if (Array.isArray(res)) rawList = res;
         else if (res && res.data && Array.isArray(res.data)) rawList = res.data;
         else if (res && res.status === "berhasil") {
-            document.getElementById('labelKoneksi').textContent = '☁️ Terhubung, siap simpan data baru';
-            document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-green-700';
-            daftarData = [];
-            tampilData();
-            if (statusEl) statusEl.classList.add('hidden');
-            return;
+            labelKoneksi.textContent = '✅ Terhubung, siap simpan data baru';
+            labelKoneksi.className = 'text-xs font-semibold text-green-700';
+            daftarData = []; tampilData();
+            if(statusEl) statusEl.classList.add('hidden'); return;
         }
         if (rawList.length > 0) {
             daftarData = rawList.map((item, idx) => {
                 const pekerjaanArr = [];
-                const rincianStr = item.RincianPekerjaan || item.rincian || '';
-                if (rincianStr) rincianStr.split(' | ').forEach(p => {
-                    const parts = p.split(': Rp ');
-                    if (parts.length === 2) pekerjaanArr.push({ nama: parts[0].trim(), biaya: parseInt(parts[1].replace(/\D/g,'')) || 0 });
-                    else if (p.trim()) pekerjaanArr.push({ nama: p.trim(), biaya: 0 });
-                });
-                const rawTotal = item.TotalBiaya || item.total || 0;
-                const cleanTotal = typeof rawTotal === 'number' ? rawTotal : parseInt(String(rawTotal).replace(/\D/g,'')) || 0;
+                const rincianTeks = String(item.RincianPekerjaan || item.rincian || '');
+                if(rincianTeks) {
+                    rincianTeks.split(' | ').forEach(p => {
+                        const m = p.match(/^(.*?): Rp ([\d.]+)$/);
+                        if(m) pekerjaanArr.push({ nama: m[1].trim(), biaya: parseInt(m[2].replace(/\./g,''),10)||0 });
+                        else if(p.trim()) pekerjaanArr.push({ nama: p.trim(), biaya:0 });
+                    });
+                }
                 return {
-                    rowId: item.rowId || (idx+2), id: item.rowId || (idx+2),
+                    rowId: Number(item.rowId || idx+2),
                     tgl: formatTanggalKeISO(item.Tanggal || item.tanggal),
                     nama: item.Nama || item.nama || '',
                     nohp: String(item.NoHP || item.nohp || ''),
@@ -241,49 +231,45 @@ function tarikDataDariSheets() {
                     plat: item.NoPlat || item.plat || '',
                     kilometer: item.Kilometer || item.kilometer || '',
                     tglBerikutnya: formatTanggalKeISO(item.TanggalBerikutnya || item.tglBerikutnya || ''),
-                    daftarPekerjaan: pekerjaanArr, total: cleanTotal,
+                    daftarPekerjaan: pekerjaanArr,
+                    total: Number(item.TotalBiaya || item.total || 0),
                     catatan: item.Catatan || item.catatan || '',
-                    sudahDihubungi: item.SudahDihubungi || item.sudahDihubungi || false
+                    sudahDihubungi: Boolean(item.SudahDihubungi || item.sudahDihubungi || false)
                 };
             });
             tampilData();
-            document.getElementById('labelKoneksi').textContent = `✅ Terhubung — ${daftarData.length} data dari Sheets`;
-            document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-green-700';
+            labelKoneksi.textContent = `✅ Terhubung — ${daftarData.length} data dimuat`;
+            labelKoneksi.className = 'text-xs font-semibold text-green-700';
         } else {
-            daftarData = [];
-            tampilData();
-            document.getElementById('labelKoneksi').textContent = '⚠️ Terhubung, Sheets masih kosong';
-            document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-amber-700';
+            daftarData = []; tampilData();
+            labelKoneksi.textContent = '⚠️ Terhubung — Sheets masih kosong';
+            labelKoneksi.className = 'text-xs font-semibold text-amber-700';
         }
-        if (statusEl) statusEl.classList.add('hidden');
+        if(statusEl) statusEl.classList.add('hidden');
     })
     .catch(err => {
         console.error('Error:', err);
-        document.getElementById('labelKoneksi').textContent = '❌ Gagal terhubung: ' + err.message;
-        document.getElementById('labelKoneksi').className = 'text-xs font-semibold text-red-700';
-        daftarData = [];
-        tampilData();
-        if (statusEl) statusEl.classList.add('hidden');
+        labelKoneksi.textContent = '❌ Gagal terhubung: ' + err.message;
+        labelKoneksi.className = 'text-xs font-semibold text-red-700';
+        daftarData = []; tampilData();
+        if(statusEl) statusEl.classList.add('hidden');
     });
 }
 
 function formatTanggalKeISO(t) {
-    if (!t) return '';
+    if(!t) return '';
     let s = String(t).replace(/T.*/,'').trim();
-    if (s.includes('-')) {
-        const p = s.split('-');
-        if (p[0].length===2 && p[2].length===4) return `${p[2]}-${p[1]}-${p[0]}`;
-        return s;
+    if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+        const [d,m,y] = s.split('/'); return `${y}-${m}-${d}`;
     }
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
     return s;
 }
 function ubahFormatTanggal(t) {
-    if (!t) return '';
+    if(!t) return '';
     let s = String(t).replace(/T.*/,'').trim();
-    if (s.includes('-')) {
-        const p = s.split('-');
-        if (p[0].length===4) return `${p[2]}-${p[1]}-${p[0]}`;
-        return s;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const [y,m,d] = s.split('-'); return `${d}/${m}/${y}`;
     }
     return s;
 }
@@ -299,53 +285,75 @@ function resetForm() {
     hitungTotal();
 }
 
-async function simpanKeSpreadsheet(data,isUpdate=false) {
-    if(!URL_GOOGLE_SHEETS)return;
-    const statusEl=document.getElementById('statusProses');
-    if(statusEl){statusEl.textContent='⏳ Menyimpan ke Google Sheets...';statusEl.classList.remove('hidden');}
-    const rincian=data.daftarPekerjaan.map(p=>p.nama?`${p.nama}: Rp ${p.biaya.toLocaleString('id-ID')}`:'').filter(Boolean).join(' | ');
-    const payload={
-        action:isUpdate?"update":"insert", rowId:data.rowId||"",
-        Tanggal:ubahFormatTanggal(data.tgl), TanggalBerikutnya:ubahFormatTanggal(data.tglBerikutnya||''),
-        Nama:data.nama, NoHP:data.nohp, MerkMotor:data.merk, TipeMotor:data.tipe,
-        NoPlat:data.plat, Kilometer:data.kilometer?(String(data.kilometer).includes('Km')?data.kilometer:data.kilometer+' Km'):'-',
-        RincianPekerjaan:rincian, TotalBiaya:'Rp '+data.total.toLocaleString('id-ID'),
-        Catatan:data.catatan||'-', SudahDihubungi:data.sudahDihubungi||false
-    };
-    try{
-        const res = await fetch(URL_GOOGLE_SHEETS, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        await res.json();
-        if(statusEl) statusEl.textContent = '✅ Tersimpan di Google Sheets!';
-        setTimeout(()=>tarikDataDariSheets(), 1500);
-    }catch(e){
-        console.warn('Gagal kirim ke Sheets:',e);
-        if(statusEl) statusEl.textContent='❌ Gagal menyimpan! ' + e.message;
-    }finally{setTimeout(()=>{if(statusEl)statusEl.classList.add('hidden');},3000);}
-}
-
-async function hapusDariSheets(rowId) {
+async function simpanKeSpreadsheet(data, isUpdate=false) {
     if(!URL_GOOGLE_SHEETS) return;
     const statusEl = document.getElementById('statusProses');
-    if(statusEl){ statusEl.textContent = '⏳ Menghapus dari Sheets...'; statusEl.classList.remove('hidden'); }
-    const payload = { action: "hapus", rowId: rowId };
+    if(statusEl){ statusEl.textContent='⏳ Menyimpan ke Sheets...'; statusEl.classList.remove('hidden'); }
+
+    const rincian = data.daftarPekerjaan.map(p=>p.nama ? `${p.nama}: Rp ${p.biaya.toLocaleString('id-ID')}` : '').filter(Boolean).join(' | ');
+    const payload = {
+        action: isUpdate ? "update" : "insert",
+        rowId: data.rowId ? Number(data.rowId) : "",
+        Tanggal: ubahFormatTanggal(data.tgl),
+        TanggalBerikutnya: ubahFormatTanggal(data.tglBerikutnya || ''),
+        Nama: data.nama,
+        NoHP: data.nohp,
+        MerkMotor: data.merk,
+        TipeMotor: data.tipe,
+        NoPlat: data.plat,
+        Kilometer: data.kilometer ? (String(data.kilometer).includes('Km') ? data.kilometer : data.kilometer+' Km') : '-',
+        RincianPekerjaan: rincian,
+        TotalBiaya: 'Rp ' + data.total.toLocaleString('id-ID'),
+        Catatan: data.catatan || '-',
+        SudahDihubungi: data.sudahDihubungi || false
+    };
+
     try {
         const res = await fetch(URL_GOOGLE_SHEETS, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        await res.json();
-        if(statusEl) statusEl.textContent = '✅ Dihapus dari Sheets!';
-        setTimeout(()=>tarikDataDariSheets(), 1500);
+        const hasil = await res.json();
+        if(hasil.status === "berhasil") {
+            alert(isUpdate ? '✅ Data diperbarui!' : '✅ Data tersimpan!');
+            resetForm();
+            setTimeout(()=>tarikDataDariSheets(), 1000);
+        } else {
+            alert('❌ Gagal: ' + (hasil.pesan || 'Error tidak diketahui'));
+        }
     } catch(e) {
-        console.warn('Gagal hapus di Sheets:', e);
-        if(statusEl) statusEl.textContent = '❌ Gagal menghapus! ' + e.message;
+        console.error('Error simpan:', e);
+        alert('❌ Gagal terhubung: ' + e.message);
     } finally {
-        setTimeout(()=>{ if(statusEl) statusEl.classList.add('hidden'); }, 3000);
+        if(statusEl) setTimeout(()=> statusEl.classList.add('hidden'), 2000);
+    }
+}
+
+async function hapusData(rowId) {
+    if (!confirm('Hapus data ini dari Google Sheets? Tindakan ini tidak bisa dibatalkan!')) return;
+    if(!URL_GOOGLE_SHEETS) return;
+    const statusEl = document.getElementById('statusProses');
+    if(statusEl){ statusEl.textContent = '⏳ Menghapus dari Sheets...'; statusEl.classList.remove('hidden'); }
+
+    try {
+        const res = await fetch(URL_GOOGLE_SHEETS, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: "hapus", rowId: Number(rowId) })
+        });
+        const hasil = await res.json();
+        if(hasil.status === "berhasil") {
+            alert('✅ Berhasil dihapus!');
+            setTimeout(()=>tarikDataDariSheets(), 800);
+        } else {
+            alert('❌ Gagal: ' + (hasil.pesan || 'Error'));
+        }
+    } catch(e) {
+        console.error('Error hapus:', e);
+        alert('❌ Gagal: ' + e.message);
+    } finally {
+        if(statusEl) setTimeout(()=> statusEl.classList.add('hidden'), 2000);
     }
 }
 
@@ -360,26 +368,23 @@ async function simpanData() {
     const plat=document.getElementById('plat').value.trim().toUpperCase();
     const kilometer=document.getElementById('kilometer').value.trim();
     const catatan=document.getElementById('catatan').value.trim();
-    if(!tanggal||!nama||!nohp||!merk||!plat)return alert('⚠️ Lengkapi: Tanggal, Nama, No HP, Merk Motor, dan No Plat!');
+    if(!tanggal||!nama||!nohp||!merk||!plat) return alert('⚠️ Lengkapi: Tanggal, Nama, No HP, Merk Motor, dan No Plat!');
     const pekerjaan=[];
     for(let i=1;i<=5;i++){
         const n=document.getElementById(`kerja${i}`).value.trim();
         const b=ambilAngka(`biaya${i}`);
-        if(n||b>0)pekerjaan.push({nama:n,biaya:b});
+        if(n||b>0) pekerjaan.push({nama:n,biaya:b});
     }
-    if(pekerjaan.length===0)return alert('⚠️ Isi minimal 1 pekerjaan & biayanya!');
+    if(pekerjaan.length===0) return alert('⚠️ Isi minimal 1 pekerjaan & biayanya!');
     const total=pekerjaan.reduce((s,i)=>s+i.biaya,0);
-    
+
     if(editRowId){
-        const data = { rowId: parseInt(editRowId), tgl:tanggal, tglBerikutnya, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan:pekerjaan, total, catatan, sudahDihubungi:false };
+        const data = { rowId: Number(editRowId), tgl:tanggal, tglBerikutnya, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan:pekerjaan, total, catatan, sudahDihubungi:false };
         await simpanKeSpreadsheet(data, true);
-        alert('✅ Data diperbarui di Google Sheets!');
     }else{
         const data = { tgl:tanggal, tglBerikutnya, nama, nohp, merk, tipe, plat, kilometer, daftarPekerjaan:pekerjaan, total, catatan, sudahDihubungi:false };
         await simpanKeSpreadsheet(data, false);
-        alert('✅ Data Tersimpan di Google Sheets!');
     }
-    resetForm();
 }
 
 function tampilData() {
@@ -395,8 +400,8 @@ function tampilData() {
             case'total':na=a.total||0;nb=b.total||0;break;
             default:na=a.tgl;nb=b.tgl;
         }
-        if(na<nb)return urutanNaik?-1:1;
-        if(na>nb)return urutanNaik?1:-1;
+        if(na<nb) return urutanNaik?-1:1;
+        if(na>nb) return urutanNaik?1:-1;
         return 0;
     });
     document.querySelectorAll('.btn-sortir').forEach(b=>b.classList.remove('aktif'));
@@ -421,8 +426,8 @@ function eksporExcel() {
     if(!daftarData.length) return alert('⚠️ Tidak ada data untuk diekspor. Klik "🔄 Muat Ulang Data" dulu.');
     let csv="\uFEFFTanggal,TanggalBerikutnya,Nama,No HP,Merk Motor,Tipe Motor,No Plat,Kilometer,Rincian,Total,Catatan\n";
     daftarData.forEach(i=>{
-        let r=i.daftarPekerjaan?i.daftarPekerjaan.map(p=>p.nama?`${p.nama} (Rp ${p.biaya})`:'').filter(Boolean).join('; '):'';
-        csv+=`"${ubahFormatTanggal(i.tgl)}","${ubahFormatTanggal(i.tglBerikutnya||'')}","${i.nama}","${i.nohp}","${i.merk}","${i.tipe}","${i.plat}","${i.kilometer||'-'}","${r}","${i.total}","${i.catatan||'-'}"\n`;
+        let r=i.daftarPekerjaan&&Array.isArray(i.daftarPekerjaan)?i.daftarPekerjaan.map(p=>p.nama?`${p.nama} (Rp ${p.biaya})`:'').filter(Boolean).join('; '):'';
+        csv+=`"${ubahFormatTanggal(i.tgl)}","${ubahFormatTanggal(i.tglBerikutnya||'')}","${i.nama}","${i.nohp}","${i.merk}","${i.tipe}","${i.plat}","${i.kilometer||'-'}","${r}","Rp ${(i.total||0).toLocaleString('id-ID')}","${i.catatan||'-'}"\n`;
     });
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
     const u=URL.createObjectURL(blob);
@@ -430,31 +435,39 @@ function eksporExcel() {
 }
 
 function bukaEdit(rowId) {
-    const d=daftarData.find(x=>String(x.rowId)===String(rowId));if(!d)return alert('Data tidak ditemukan! Klik "🔄 Muat Ulang Data" dulu.');
-    document.getElementById('editRowId').value=rowId;document.getElementById('judulForm').textContent='Edit Riwayat Servis';
-    document.getElementById('tanggal').value=d.tgl;document.getElementById('tglBerikutnya').value=d.tglBerikutnya||'';
-    document.getElementById('nama').value=d.nama;document.getElementById('nohp').value=d.nohp;
-    document.getElementById('merk').value=d.merk||'';document.getElementById('tipe').value=d.tipe||'';
-    document.getElementById('plat').value=d.plat||'';document.getElementById('kilometer').value=String(d.kilometer||'').replace(/\D/g,'');
+    const d=daftarData.find(x=>Number(x.rowId)===Number(rowId));
+    if(!d) return alert('Data tidak ditemukan! Klik "🔄 Muat Ulang Data" dulu.');
+
+    document.getElementById('editRowId').value=d.rowId;
+    document.getElementById('judulForm').textContent='Edit Riwayat Servis';
+    document.getElementById('tanggal').value=d.tgl||'';
+    document.getElementById('tglBerikutnya').value=d.tglBerikutnya||'';
+    document.getElementById('nama').value=d.nama||'';
+    document.getElementById('nohp').value=d.nohp||'';
+    document.getElementById('merk').value=d.merk||'';
+    document.getElementById('tipe').value=d.tipe||'';
+    document.getElementById('plat').value=d.plat||'';
+    document.getElementById('kilometer').value=String(d.kilometer||'').replace(/\D/g,'');
     document.getElementById('catatan').value=d.catatan||'';
+
     for(let i=1;i<=5;i++){
         const x=(d.daftarPekerjaan&&d.daftarPekerjaan[i-1])?d.daftarPekerjaan[i-1]:{nama:'',biaya:0};
         document.getElementById(`kerja${i}`).value=x.nama||'';
         document.getElementById(`biaya${i}`).value=x.biaya>0?x.biaya.toLocaleString('id-ID'):'';
     }
-    hitungTotal();window.scrollTo({top:0,behavior:'smooth'});
-}
-
-async function hapusData(rowId) {
-    if (!confirm('Hapus data ini dari Google Sheets? Tindakan ini tidak bisa dibatalkan!')) return;
-    await hapusDariSheets(rowId);
+    hitungTotal();
+    window.scrollTo({top:0,behavior:'smooth'});
 }
 
 function bukaStruk(rowId) {
-    dataTerpilih=daftarData.find(x=>String(x.rowId)===String(rowId));if(!dataTerpilih)return alert('Data tidak ditemukan!');
+    dataTerpilih=daftarData.find(x=>Number(x.rowId)===Number(rowId));
+    if(!dataTerpilih) return alert('Data tidak ditemukan!');
+
     let r='';
     if(dataTerpilih.daftarPekerjaan&&Array.isArray(dataTerpilih.daftarPekerjaan)){
-        dataTerpilih.daftarPekerjaan.forEach(p=>{if(p.nama)r+=`<div class="baris-harga"><span class="harga-kiri">${p.nama}</span><span class="harga-kanan">Rp ${(p.biaya||0).toLocaleString('id-ID')}</span></div>`;});
+        dataTerpilih.daftarPekerjaan.forEach(p=>{
+            if(p.nama) r+=`<div class="baris-harga"><span class="harga-kiri">${p.nama}</span><span class="harga-kanan">Rp ${(p.biaya||0).toLocaleString('id-ID')}</span></div>`;
+        });
     }
     document.getElementById('areaCetak').innerHTML=`
         <div class="struk" id="strukFisik">
@@ -483,7 +496,7 @@ function bukaStruk(rowId) {
 function tutupStruk() { document.getElementById('modalStruk').style.display='none'; }
 function cetakStruk() { window.print(); }
 async function bagikanWA() {
-    if(!dataTerpilih)return alert('Data tidak ditemukan!');
+    if(!dataTerpilih) return alert('Data tidak ditemukan!');
     const btn=document.getElementById('btnWA');btn.textContent="⏳ Memproses...";btn.disabled=true;
     try{
         const canvas=await html2canvas(document.getElementById('strukFisik'),{scale:2});
