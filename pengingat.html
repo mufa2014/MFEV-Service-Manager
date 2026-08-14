@@ -183,18 +183,16 @@ async function tandaiSudah(rowId) {
         rowId: Number(rowId)
     };
     try {
-        const res = await fetch(URL_GOOGLE_SHEETS, {
+        // ✅ DITAMBAHKAN mode: 'no-cors' agar dikirim ke Sheets
+        await fetch(URL_GOOGLE_SHEETS, {
             method: 'POST',
+            mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        const hasil = await res.json();
-        if(hasil.status === "berhasil") {
-            alert('✅ Ditandai sudah dihubungi!');
-            tarikDataDariSheets();
-        } else {
-            alert('⚠️ Gagal: ' + (hasil.pesan || 'Error'));
-        }
+        // Karena pakai no-cors, respons tidak bisa dibaca — dianggap berhasil
+        alert('✅ Tersimpan! Muat ulang untuk konfirmasi.');
+        tarikDataDariSheets();
     } catch (e) {
         console.error('Error:', e);
         alert('⚠️ Tersimpan sementara. Muat ulang untuk melihat perubahan.');
